@@ -29,9 +29,9 @@ enum EstadoRolTurnos {
 }
 
 enum TipoRecargo {
-  DIURNO          // 25%
-  NOCTURNO        // 50%
-  FESTIVO         // 50%
+  DIURNO // 25%
+  NOCTURNO // 50%
+  FESTIVO // 50%
 }
 
 enum TipoCompensacion {
@@ -63,31 +63,32 @@ enum EstadoCambioTurno {
 }
 
 enum CategoriaHabilitacion {
-  TWR  // Torre de Control
-  APP  // Control de Aproximación
-  ACC  // Control de Área
-  FSS  // Estación de Servicio de Vuelo
+  TWR // Torre de Control
+  APP // Control de Aproximación
+  ACC // Control de Área
+  FSS // Estación de Servicio de Vuelo
 }
 
 // ==================== MODELOS ====================
 
 // 1. USUARIO - Gestión de usuarios y autenticación
 model Usuario {
-  id                String   @id @default(cuid())
-  email             String   @unique
-  nombre            String
-  apellido          String
-  rut               String   @unique
-  password          String
-  rol               Rol      @default(CONTROLADOR)
-  activo            Boolean  @default(true)
-  
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime? // Para verificación de email
+  nombre        String? // Opcional hasta completar registro
+  apellido      String? // Opcional hasta completar registro
+  rut           String?   @unique // Opcional hasta completar registro
+  password      String? // Opcional (para OAuth futuro)
+  rol           Rol       @default(CONTROLADOR)
+  activo        Boolean   @default(false) // false hasta verificar email
+
   // Datos laborales
-  sueldo            Decimal? @db.Decimal(10, 2)
+  sueldo                 Decimal? @db.Decimal(10, 2)
   asignacionesSalariales Decimal? @db.Decimal(10, 2)
-  valorHora         Decimal? @db.Decimal(10, 2) // (Sueldo + Asignaciones) / 190
-  
-  // Relaciones
+  valorHora              Decimal? @db.Decimal(10, 2) // (Sueldo + Asignaciones) / 190
+
+  // Relaciones existentes
   habilitaciones       HabilitacionControlador[]
   asignaciones         AsignacionTurno[]
   jornadasDiarias      JornadaDiaria[]
@@ -95,11 +96,17 @@ model Usuario {
   compensaciones       Compensacion[]
   ausencias            Ausencia[]
   limitesFatiga        LimitesFatiga?
-  cambiosSolicitados   CambioTurno[] @relation("Solicitante")
-  cambiosReemplazante  CambioTurno[] @relation("Reemplazante")
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  cambiosSolicitados   CambioTurno[]             @relation("Solicitante")
+  cambiosReemplazante  CambioTurno[]             @relation("Reemplazante")
+
+  // Relaciones para autenticación
+  accounts            Account[]
+  sessions            Session[]
+  verificationTokens  VerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([email])
   @@index([rut])
@@ -108,36 +115,36 @@ model Usuario {
 
 // 2. TIPO TURNO - Catálogo de 30 tipos de turnos
 model TipoTurno {
-  id                String   @id @default(cuid())
-  codigo            String   @unique // D, N, S, OP, A, AV, etc.
-  nombre            String
-  descripcion       String?
-  
+  id          String  @id @default(cuid())
+  codigo      String  @unique // D, N, S, OP, A, AV, etc.
+  nombre      String
+  descripcion String?
+
   // Horarios
-  horaInicio        String   // HH:mm
-  horaFin           String   // HH:mm
-  duracionTotal     Decimal  @db.Decimal(4, 2) // En horas (ej: 12.00, 8.50)
-  
+  horaInicio    String // HH:mm
+  horaFin       String // HH:mm
+  duracionTotal Decimal @db.Decimal(4, 2) // En horas (ej: 12.00, 8.50)
+
   // Distribución de horas
-  horasDiurnas      Decimal  @db.Decimal(4, 2)
-  horasNocturnas    Decimal  @db.Decimal(4, 2)
-  
+  horasDiurnas   Decimal @db.Decimal(4, 2)
+  horasNocturnas Decimal @db.Decimal(4, 2)
+
   // Características
-  esOperacional     Boolean  @default(true)
-  esAdministrativo  Boolean  @default(false)
-  esDescanso        Boolean  @default(false)
-  esAusencia        Boolean  @default(false)
-  
+  esOperacional    Boolean @default(true)
+  esAdministrativo Boolean @default(false)
+  esDescanso       Boolean @default(false)
+  esAusencia       Boolean @default(false)
+
   // Compensación para descansos (DA, DV, DC, DN)
-  horasCompensadas  Decimal? @db.Decimal(4, 2)
-  
-  activo            Boolean  @default(true)
-  
+  horasCompensadas Decimal? @db.Decimal(4, 2)
+
+  activo Boolean @default(true)
+
   // Relaciones
-  asignaciones      AsignacionTurno[]
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  asignaciones AsignacionTurno[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([codigo])
   @@index([esOperacional])
@@ -145,23 +152,23 @@ model TipoTurno {
 
 // 3. ROL TURNOS - Publicación mensual de turnos
 model RolTurnos {
-  id                String   @id @default(cuid())
-  mes               Int      // 1-12
-  año               Int
-  
-  estado            EstadoRolTurnos @default(BORRADOR)
-  
-  fechaPublicacion  DateTime?
-  fechaAprobacion   DateTime?
-  fechaCierre       DateTime?
-  
-  observaciones     String?
-  
+  id   String @id @default(cuid())
+  mes  Int // 1-12
+  año Int
+
+  estado EstadoRolTurnos @default(BORRADOR)
+
+  fechaPublicacion DateTime?
+  fechaAprobacion  DateTime?
+  fechaCierre      DateTime?
+
+  observaciones String?
+
   // Relaciones
-  asignaciones      AsignacionTurno[]
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  asignaciones AsignacionTurno[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([mes, año])
   @@index([estado])
@@ -170,28 +177,28 @@ model RolTurnos {
 
 // 4. ASIGNACIÓN TURNO - Asignación diaria de turnos a controladores
 model AsignacionTurno {
-  id                String   @id @default(cuid())
-  
-  fecha             DateTime @db.Date
-  
+  id String @id @default(cuid())
+
+  fecha DateTime @db.Date
+
   // Relaciones
-  rolTurnosId       String
-  rolTurnos         RolTurnos @relation(fields: [rolTurnosId], references: [id], onDelete: Cascade)
-  
-  usuarioId         String
-  usuario           Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
-  tipoTurnoId       String
-  tipoTurno         TipoTurno @relation(fields: [tipoTurnoId], references: [id])
-  
+  rolTurnosId String
+  rolTurnos   RolTurnos @relation(fields: [rolTurnosId], references: [id], onDelete: Cascade)
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  tipoTurnoId String
+  tipoTurno   TipoTurno @relation(fields: [tipoTurnoId], references: [id])
+
   // Datos del turno
-  horaInicioReal    String?   // HH:mm (si difiere del tipo)
-  horaFinReal       String?   // HH:mm (si difiere del tipo)
-  
-  observaciones     String?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  horaInicioReal String? // HH:mm (si difiere del tipo)
+  horaFinReal    String? // HH:mm (si difiere del tipo)
+
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([rolTurnosId, usuarioId, fecha])
   @@index([fecha])
@@ -200,27 +207,27 @@ model AsignacionTurno {
 
 // 5. JORNADA DIARIA - Registro diario de trabajo efectivo
 model JornadaDiaria {
-  id                String   @id @default(cuid())
-  
-  fecha             DateTime @db.Date
-  
+  id String @id @default(cuid())
+
+  fecha DateTime @db.Date
+
   // Relaciones
-  usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
   // Horas trabajadas
-  horasTrabajadas   Decimal  @db.Decimal(4, 2)
-  horasDiurnas      Decimal  @db.Decimal(4, 2)
-  horasNocturnas    Decimal  @db.Decimal(4, 2)
-  
+  horasTrabajadas Decimal @db.Decimal(4, 2)
+  horasDiurnas    Decimal @db.Decimal(4, 2)
+  horasNocturnas  Decimal @db.Decimal(4, 2)
+
   // Clasificación
-  dentroHLM         Boolean  @default(true)
-  esFestivo         Boolean  @default(false)
-  
-  observaciones     String?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  dentroHLM Boolean @default(true)
+  esFestivo Boolean @default(false)
+
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([usuarioId, fecha])
   @@index([usuarioId, fecha])
@@ -229,33 +236,33 @@ model JornadaDiaria {
 
 // 6. HORA EXTRAORDINARIA - Registro y cálculo de HH.EE.
 model HoraExtraordinaria {
-  id                String   @id @default(cuid())
-  
-  fecha             DateTime @db.Date
-  
+  id String @id @default(cuid())
+
+  fecha DateTime @db.Date
+
   // Relaciones
-  usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
   // Horas extraordinarias
-  horasExtras       Decimal  @db.Decimal(4, 2)
+  horasExtras       Decimal     @db.Decimal(4, 2)
   tipoRecargo       TipoRecargo
-  porcentajeRecargo Decimal  @db.Decimal(3, 0) // 25 o 50
-  
+  porcentajeRecargo Decimal     @db.Decimal(3, 0) // 25 o 50
+
   // Cálculos
-  horasConRecargo   Decimal  @db.Decimal(5, 2) // horasExtras × (1 + recargo)
-  montoAPagar       Decimal? @db.Decimal(10, 2) // Si se paga
-  
+  horasConRecargo Decimal  @db.Decimal(5, 2) // horasExtras × (1 + recargo)
+  montoAPagar     Decimal? @db.Decimal(10, 2) // Si se paga
+
   // Clasificación
-  dentroHLM         Boolean  @default(false)
-  
-  mes               Int      // Para control mensual
-  año               Int
-  
-  observaciones     String?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  dentroHLM Boolean @default(false)
+
+  mes  Int // Para control mensual
+  año Int
+
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([usuarioId, mes, año])
   @@index([fecha])
@@ -263,32 +270,32 @@ model HoraExtraordinaria {
 
 // 7. COMPENSACIÓN - Descansos complementarios y pagos
 model Compensacion {
-  id                String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relaciones
-  usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
-  tipo              TipoCompensacion
-  estado            EstadoCompensacion @default(PENDIENTE)
-  
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  tipo   TipoCompensacion
+  estado EstadoCompensacion @default(PENDIENTE)
+
   // Datos de compensación
-  horasACompensar   Decimal  @db.Decimal(5, 2)
-  fechaSolicitud    DateTime @default(now())
-  fechaAprobacion   DateTime?
-  fechaEjecucion    DateTime? @db.Date
-  
+  horasACompensar Decimal   @db.Decimal(5, 2)
+  fechaSolicitud  DateTime  @default(now())
+  fechaAprobacion DateTime?
+  fechaEjecucion  DateTime? @db.Date
+
   // Para pagos
-  montoAPagar       Decimal? @db.Decimal(10, 2)
-  fechaPago         DateTime?
-  
-  mes               Int      // Mes origen
-  año               Int
-  
-  observaciones     String?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  montoAPagar Decimal?  @db.Decimal(10, 2)
+  fechaPago   DateTime?
+
+  mes  Int // Mes origen
+  año Int
+
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([usuarioId, estado])
   @@index([mes, año])
@@ -296,26 +303,26 @@ model Compensacion {
 
 // 8. AUSENCIA - Licencias, permisos y ausencias
 model Ausencia {
-  id                String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relaciones
-  usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
-  tipo              TipoAusencia
-  
-  fechaInicio       DateTime @db.Date
-  fechaFin          DateTime @db.Date
-  diasTotales       Int
-  
-  documentoRespaldo String?  // URL o referencia
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  tipo TipoAusencia
+
+  fechaInicio DateTime @db.Date
+  fechaFin    DateTime @db.Date
+  diasTotales Int
+
+  documentoRespaldo String? // URL o referencia
   observaciones     String?
-  
-  aprobada          Boolean  @default(false)
-  fechaAprobacion   DateTime?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+
+  aprobada        Boolean   @default(false)
+  fechaAprobacion DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([usuarioId, fechaInicio])
   @@index([tipo])
@@ -323,31 +330,31 @@ model Ausencia {
 
 // 9. LÍMITES FATIGA - Control de fatiga según DAN 11
 model LimitesFatiga {
-  id                String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relaciones
-  usuarioId         String   @unique
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
-  mes               Int
-  año               Int
-  
+  usuarioId String  @unique
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  mes  Int
+  año Int
+
   // Acumulados mensuales
-  horasMensuales    Decimal  @db.Decimal(5, 2)
-  diasConsecutivos  Int      @default(0)
-  
+  horasMensuales   Decimal @db.Decimal(5, 2)
+  diasConsecutivos Int     @default(0)
+
   // Acumulado anual
-  horasAnuales      Decimal  @db.Decimal(6, 2)
-  
+  horasAnuales Decimal @db.Decimal(6, 2)
+
   // Alertas
-  alertaMensual     Boolean  @default(false)  // > 185h
-  alertaAnual       Boolean  @default(false)  // > 2230h
-  alertaConsecutivos Boolean @default(false)  // > 3 días
-  
-  ultimoDescanso    DateTime? @db.Date
-  horasDescanso     Decimal?  @db.Decimal(3, 1)
-  
-  updatedAt         DateTime @updatedAt
+  alertaMensual      Boolean @default(false) // > 185h
+  alertaAnual        Boolean @default(false) // > 2230h
+  alertaConsecutivos Boolean @default(false) // > 3 días
+
+  ultimoDescanso DateTime? @db.Date
+  horasDescanso  Decimal?  @db.Decimal(3, 1)
+
+  updatedAt DateTime @updatedAt
 
   @@unique([usuarioId, mes, año])
   @@index([mes, año])
@@ -355,23 +362,23 @@ model LimitesFatiga {
 
 // 10. HABILITACIÓN CONTROLADOR - Dependencias autorizadas
 model HabilitacionControlador {
-  id                String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relaciones
-  usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
-  dependenciaId     String
-  dependencia       CategoriaDependencia @relation(fields: [dependenciaId], references: [id])
-  
-  fechaHabilitacion DateTime @db.Date
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  dependenciaId String
+  dependencia   CategoriaDependencia @relation(fields: [dependenciaId], references: [id])
+
+  fechaHabilitacion DateTime  @db.Date
   fechaVencimiento  DateTime? @db.Date
-  activa            Boolean  @default(true)
-  
-  observaciones     String?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  activa            Boolean   @default(true)
+
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([usuarioId, dependenciaId])
   @@index([usuarioId])
@@ -380,29 +387,29 @@ model HabilitacionControlador {
 
 // 11. CAMBIO TURNO - Solicitudes de cambio entre controladores
 model CambioTurno {
-  id                String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Relaciones
-  solicitanteId     String
-  solicitante       Usuario  @relation("Solicitante", fields: [solicitanteId], references: [id])
-  
-  reemplazanteId    String
-  reemplazante      Usuario  @relation("Reemplazante", fields: [reemplazanteId], references: [id])
-  
-  fechaTurno        DateTime @db.Date
-  
-  estado            EstadoCambioTurno @default(SOLICITADO)
-  
-  fechaSolicitud    DateTime @default(now())
-  fechaRespuesta    DateTime?
-  
-  motivoSolicitud   String
-  motivoRechazo     String?
-  
-  observaciones     String?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  solicitanteId String
+  solicitante   Usuario @relation("Solicitante", fields: [solicitanteId], references: [id])
+
+  reemplazanteId String
+  reemplazante   Usuario @relation("Reemplazante", fields: [reemplazanteId], references: [id])
+
+  fechaTurno DateTime @db.Date
+
+  estado EstadoCambioTurno @default(SOLICITADO)
+
+  fechaSolicitud DateTime  @default(now())
+  fechaRespuesta DateTime?
+
+  motivoSolicitud String
+  motivoRechazo   String?
+
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([solicitanteId, estado])
   @@index([reemplazanteId, estado])
@@ -411,36 +418,105 @@ model CambioTurno {
 
 // 12. CATEGORÍA DEPENDENCIA - TWR, APP, ACC, FSS
 model CategoriaDependencia {
-  id                String   @id @default(cuid())
-  
-  codigo            String   @unique  // TWR, APP, ACC, FSS
-  nombre            String
-  descripcion       String?
-  
-  categoria         CategoriaHabilitacion
-  
-  activa            Boolean  @default(true)
-  
+  id String @id @default(cuid())
+
+  codigo      String  @unique // TWR, APP, ACC, FSS
+  nombre      String
+  descripcion String?
+
+  categoria CategoriaHabilitacion
+
+  activa Boolean @default(true)
+
   // Relaciones
-  habilitaciones    HabilitacionControlador[]
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  habilitaciones HabilitacionControlador[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([codigo])
   @@index([categoria])
 }
 
+// ==================== MODELOS DE AUTENTICACIÓN ====================
+
+// NextAuth Account (para OAuth futuro)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// NextAuth Session
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Token de verificación de email
+model VerificationToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  userId String?
+  user   Usuario? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
+  @@index([email])
+  @@index([token])
+}
+
+// Token de reset de password
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  userId String?
+  user   Usuario? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
+  @@index([email])
+  @@index([token])
+}
+
 // 13. CONFIGURACIÓN - Parámetros del sistema
 model Configuracion {
-  id                String   @id @default(cuid())
-  
-  clave             String   @unique
-  valor             String
-  tipo              String   // string, number, boolean, json
-  descripcion       String?
-  
-  updatedAt         DateTime @updatedAt
+  id String @id @default(cuid())
+
+  clave       String  @unique
+  valor       String
+  tipo        String // string, number, boolean, json
+  descripcion String?
+
+  updatedAt DateTime @updatedAt
 
   @@index([clave])
 }

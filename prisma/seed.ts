@@ -392,7 +392,12 @@ async function main() {
   // ==================== 2. CATEGORÍAS DE DEPENDENCIA ====================
   console.log('🏢 Creando categorías de dependencia...')
 
-  const categorias = [
+  const categorias: Array<{
+    codigo: string
+    nombre: string
+    descripcion: string
+    categoria: 'TWR' | 'APP' | 'ACC' | 'FSS'
+  }> = [
     {
       codigo: 'TWR',
       nombre: 'Torre de Control',
@@ -432,21 +437,51 @@ async function main() {
   // ==================== 3. USUARIO ADMIN ====================
   console.log('👤 Creando usuario administrador...')
 
-  await prisma.usuario.upsert({
+  // Hash de password para "admin123" (cambiar en producción)
+  const bcrypt = require('bcryptjs')
+  const hashedPassword = await bcrypt.hash('admin123', 10)
+
+  // Primero, actualizar usuario existente si tiene el email viejo
+  const existingAdmin = await prisma.usuario.findUnique({
     where: { email: 'admin@dgac.cl' },
-    update: {},
-    create: {
-      email: 'admin@dgac.cl',
-      nombre: 'Administrador',
-      apellido: 'Sistema',
-      rut: '11111111-1',
-      password: '$2a$10$EXAMPLE_HASH', // Cambiar por hash real en producción
-      rol: 'ADMIN',
-      activo: true,
-    },
   })
 
-  console.log('✅ Usuario admin creado (email: admin@dgac.cl)')
+  if (existingAdmin) {
+    // Actualizar email y agregar campos de autenticación
+    await prisma.usuario.update({
+      where: { id: existingAdmin.id },
+      data: {
+        email: 'admin@dgac.gob.cl', // Actualizar email
+        emailVerified: new Date(),   // Agregar verificación
+        activo: true,                // Asegurar que está activo
+        password: hashedPassword,    // Hash real
+      },
+    })
+    console.log('✅ Usuario admin actualizado (email: admin@dgac.gob.cl, password: admin123)')
+  } else {
+    // Crear nuevo admin si no existe
+    await prisma.usuario.upsert({
+      where: { email: 'admin@dgac.gob.cl' },
+      update: {
+        emailVerified: new Date(),
+        activo: true,
+        password: hashedPassword,
+      },
+      create: {
+        email: 'admin@dgac.gob.cl',
+        nombre: 'Administrador',
+        apellido: 'Sistema',
+        rut: '11111111-1',
+        password: hashedPassword,
+        rol: 'ADMIN',
+        activo: true,
+        emailVerified: new Date(),
+      },
+    })
+    console.log('✅ Usuario admin creado (email: admin@dgac.gob.cl, password: admin123)')
+  }
+
+  console.log('⚠️  IMPORTANTE: Cambiar password en producción')
 
   // ==================== 4. CONFIGURACIONES ====================
   console.log('⚙️ Creando configuraciones del sistema...')

@@ -104,6 +104,89 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Líneas de TypeScript: 867 (schema + seeds)
 - Tamaño del cliente Prisma: ~1.2 MB
 
+### 🎯 Checkpoint CP-003 - 2025-01-14
+
+#### Sistema de Autenticación Completo 🔐
+
+**NextAuth.js v5 Instalado:**
+- next-auth@5.0.0-beta.29 - Framework de autenticación
+- @auth/prisma-adapter@2.11.0 - Integración con Prisma
+- @auth/core@0.40.0 y 0.41.0 - Core de Auth.js
+- bcryptjs@3.0.2 - Hash seguro de passwords (10 rounds)
+- Total: +68 paquetes instalados
+
+**Schema de Prisma Actualizado:**
+- Usuario actualizado con emailVerified, campos opcionales
+- 4 modelos nuevos: Account, Session, VerificationToken, PasswordResetToken
+- 10 índices nuevos para performance
+- 4 foreign keys con CASCADE delete
+
+**Migración add_auth_models:**
+- Timestamp: 20251014165444
+- 108 líneas SQL ejecutadas
+- 4 tablas nuevas creadas
+- Cliente Prisma regenerado
+
+**Configuración de Auth.js:**
+- auth.config.ts con Credentials Provider
+- Validación de dominio @dgac.gob.cl obligatoria
+- Verificación de emailVerified y usuario activo
+- Callbacks JWT y Session con datos personalizados
+- auth.ts con estrategia JWT (serverless-friendly)
+- Tipos TypeScript extendidos en next-auth.d.ts
+
+**API Routes de NextAuth:**
+- Endpoints automáticos: signin, signout, session, csrf, providers
+- API route: src/app/api/auth/[...nextauth]/route.ts
+
+**Páginas de Autenticación:**
+- Layout de auth con gradient background
+- Página de login con logo DGAC
+- LoginForm con validación y loading states
+- Dashboard temporal con botón de logout
+- Server Actions para login
+
+**Middleware de Protección:**
+- Protección automática de rutas (/dashboard, /turnos, /horas-extras, /usuarios, /configuracion)
+- Redirects inteligentes según sesión
+- Edge Runtime compatible
+
+**Utilidades de Autenticación:**
+- 11 helpers: getSession, getCurrentUser, isAuthenticated, hasRole, isAdmin, isSupervisor, requireAuth, requireRole, requireAdmin, etc.
+
+**Seeds Actualizados:**
+- Usuario admin: admin@dgac.gob.cl con password bcrypt real
+- emailVerified y activo configurados
+
+**Assets:**
+- Logo DGAC institucional (public/logo-dgac.jpg)
+
+**Características de Seguridad:**
+- Email institucional @dgac.gob.cl obligatorio
+- Verificación de email antes de login
+- Passwords hasheados con bcryptjs (10 rounds)
+- Sesiones JWT firmadas (32 bytes secret)
+- CSRF Protection automático
+- HttpOnly y SameSite cookies
+- Mensajes de error genéricos
+- Middleware en Edge Runtime
+
+**Pruebas Completadas:**
+- Login con credenciales correctas ✅
+- Logout funcional ✅
+- Validación de dominio ✅
+- Credenciales incorrectas ✅
+- Middleware protege rutas ✅
+- Logo DGAC visible ✅
+- Dashboard funcional ✅
+
+**Estadísticas:**
+- Paquetes totales: 559 (+68)
+- Líneas de código: ~700 TypeScript
+- Líneas SQL: 108
+- Modelos Prisma: 17 (+4)
+- Vulnerabilidades: 0
+
 ---
 
 ## Leyenda
