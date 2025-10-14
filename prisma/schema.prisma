@@ -1,0 +1,446 @@
+// SGTHE - Sistema de Gestión de Turnos y Horas Extraordinarias
+// Base de datos: Vercel Postgres con Prisma Accelerate
+// Normativas: PRO DRH 22 (Ed. 3, Julio 2016), DAN 11 (Apéndice 6), PRO ATS 01
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum Rol {
+  ADMIN
+  SUPERVISOR
+  ENCARGADO_PERSONAL
+  CONTROLADOR
+}
+
+enum EstadoRolTurnos {
+  BORRADOR
+  PUBLICADO
+  APROBADO
+  CERRADO
+}
+
+enum TipoRecargo {
+  DIURNO          // 25%
+  NOCTURNO        // 50%
+  FESTIVO         // 50%
+}
+
+enum TipoCompensacion {
+  DESCANSO_COMPLEMENTARIO
+  PAGO_HORAS_EXTRAS
+  PAGO_PROMEDIO_LICENCIA
+}
+
+enum EstadoCompensacion {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  PAGADA
+}
+
+enum TipoAusencia {
+  FERIADO_LEGAL
+  LICENCIA_MEDICA
+  PERMISO_ADMINISTRATIVO
+  PERMISO_SIN_GOCE
+  COMISION_SERVICIO
+}
+
+enum EstadoCambioTurno {
+  SOLICITADO
+  APROBADO
+  RECHAZADO
+  CANCELADO
+}
+
+enum CategoriaHabilitacion {
+  TWR  // Torre de Control
+  APP  // Control de Aproximación
+  ACC  // Control de Área
+  FSS  // Estación de Servicio de Vuelo
+}
+
+// ==================== MODELOS ====================
+
+// 1. USUARIO - Gestión de usuarios y autenticación
+model Usuario {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  nombre            String
+  apellido          String
+  rut               String   @unique
+  password          String
+  rol               Rol      @default(CONTROLADOR)
+  activo            Boolean  @default(true)
+  
+  // Datos laborales
+  sueldo            Decimal? @db.Decimal(10, 2)
+  asignacionesSalariales Decimal? @db.Decimal(10, 2)
+  valorHora         Decimal? @db.Decimal(10, 2) // (Sueldo + Asignaciones) / 190
+  
+  // Relaciones
+  habilitaciones       HabilitacionControlador[]
+  asignaciones         AsignacionTurno[]
+  jornadasDiarias      JornadaDiaria[]
+  horasExtraordinarias HoraExtraordinaria[]
+  compensaciones       Compensacion[]
+  ausencias            Ausencia[]
+  limitesFatiga        LimitesFatiga?
+  cambiosSolicitados   CambioTurno[] @relation("Solicitante")
+  cambiosReemplazante  CambioTurno[] @relation("Reemplazante")
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([email])
+  @@index([rut])
+  @@index([rol])
+}
+
+// 2. TIPO TURNO - Catálogo de 30 tipos de turnos
+model TipoTurno {
+  id                String   @id @default(cuid())
+  codigo            String   @unique // D, N, S, OP, A, AV, etc.
+  nombre            String
+  descripcion       String?
+  
+  // Horarios
+  horaInicio        String   // HH:mm
+  horaFin           String   // HH:mm
+  duracionTotal     Decimal  @db.Decimal(4, 2) // En horas (ej: 12.00, 8.50)
+  
+  // Distribución de horas
+  horasDiurnas      Decimal  @db.Decimal(4, 2)
+  horasNocturnas    Decimal  @db.Decimal(4, 2)
+  
+  // Características
+  esOperacional     Boolean  @default(true)
+  esAdministrativo  Boolean  @default(false)
+  esDescanso        Boolean  @default(false)
+  esAusencia        Boolean  @default(false)
+  
+  // Compensación para descansos (DA, DV, DC, DN)
+  horasCompensadas  Decimal? @db.Decimal(4, 2)
+  
+  activo            Boolean  @default(true)
+  
+  // Relaciones
+  asignaciones      AsignacionTurno[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([codigo])
+  @@index([esOperacional])
+}
+
+// 3. ROL TURNOS - Publicación mensual de turnos
+model RolTurnos {
+  id                String   @id @default(cuid())
+  mes               Int      // 1-12
+  año               Int
+  
+  estado            EstadoRolTurnos @default(BORRADOR)
+  
+  fechaPublicacion  DateTime?
+  fechaAprobacion   DateTime?
+  fechaCierre       DateTime?
+  
+  observaciones     String?
+  
+  // Relaciones
+  asignaciones      AsignacionTurno[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([mes, año])
+  @@index([estado])
+  @@index([mes, año])
+}
+
+// 4. ASIGNACIÓN TURNO - Asignación diaria de turnos a controladores
+model AsignacionTurno {
+  id                String   @id @default(cuid())
+  
+  fecha             DateTime @db.Date
+  
+  // Relaciones
+  rolTurnosId       String
+  rolTurnos         RolTurnos @relation(fields: [rolTurnosId], references: [id], onDelete: Cascade)
+  
+  usuarioId         String
+  usuario           Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  tipoTurnoId       String
+  tipoTurno         TipoTurno @relation(fields: [tipoTurnoId], references: [id])
+  
+  // Datos del turno
+  horaInicioReal    String?   // HH:mm (si difiere del tipo)
+  horaFinReal       String?   // HH:mm (si difiere del tipo)
+  
+  observaciones     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([rolTurnosId, usuarioId, fecha])
+  @@index([fecha])
+  @@index([usuarioId, fecha])
+}
+
+// 5. JORNADA DIARIA - Registro diario de trabajo efectivo
+model JornadaDiaria {
+  id                String   @id @default(cuid())
+  
+  fecha             DateTime @db.Date
+  
+  // Relaciones
+  usuarioId         String
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  // Horas trabajadas
+  horasTrabajadas   Decimal  @db.Decimal(4, 2)
+  horasDiurnas      Decimal  @db.Decimal(4, 2)
+  horasNocturnas    Decimal  @db.Decimal(4, 2)
+  
+  // Clasificación
+  dentroHLM         Boolean  @default(true)
+  esFestivo         Boolean  @default(false)
+  
+  observaciones     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([usuarioId, fecha])
+  @@index([usuarioId, fecha])
+  @@index([fecha])
+}
+
+// 6. HORA EXTRAORDINARIA - Registro y cálculo de HH.EE.
+model HoraExtraordinaria {
+  id                String   @id @default(cuid())
+  
+  fecha             DateTime @db.Date
+  
+  // Relaciones
+  usuarioId         String
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  // Horas extraordinarias
+  horasExtras       Decimal  @db.Decimal(4, 2)
+  tipoRecargo       TipoRecargo
+  porcentajeRecargo Decimal  @db.Decimal(3, 0) // 25 o 50
+  
+  // Cálculos
+  horasConRecargo   Decimal  @db.Decimal(5, 2) // horasExtras × (1 + recargo)
+  montoAPagar       Decimal? @db.Decimal(10, 2) // Si se paga
+  
+  // Clasificación
+  dentroHLM         Boolean  @default(false)
+  
+  mes               Int      // Para control mensual
+  año               Int
+  
+  observaciones     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([usuarioId, mes, año])
+  @@index([fecha])
+}
+
+// 7. COMPENSACIÓN - Descansos complementarios y pagos
+model Compensacion {
+  id                String   @id @default(cuid())
+  
+  // Relaciones
+  usuarioId         String
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  tipo              TipoCompensacion
+  estado            EstadoCompensacion @default(PENDIENTE)
+  
+  // Datos de compensación
+  horasACompensar   Decimal  @db.Decimal(5, 2)
+  fechaSolicitud    DateTime @default(now())
+  fechaAprobacion   DateTime?
+  fechaEjecucion    DateTime? @db.Date
+  
+  // Para pagos
+  montoAPagar       Decimal? @db.Decimal(10, 2)
+  fechaPago         DateTime?
+  
+  mes               Int      // Mes origen
+  año               Int
+  
+  observaciones     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([usuarioId, estado])
+  @@index([mes, año])
+}
+
+// 8. AUSENCIA - Licencias, permisos y ausencias
+model Ausencia {
+  id                String   @id @default(cuid())
+  
+  // Relaciones
+  usuarioId         String
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  tipo              TipoAusencia
+  
+  fechaInicio       DateTime @db.Date
+  fechaFin          DateTime @db.Date
+  diasTotales       Int
+  
+  documentoRespaldo String?  // URL o referencia
+  observaciones     String?
+  
+  aprobada          Boolean  @default(false)
+  fechaAprobacion   DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([usuarioId, fechaInicio])
+  @@index([tipo])
+}
+
+// 9. LÍMITES FATIGA - Control de fatiga según DAN 11
+model LimitesFatiga {
+  id                String   @id @default(cuid())
+  
+  // Relaciones
+  usuarioId         String   @unique
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  mes               Int
+  año               Int
+  
+  // Acumulados mensuales
+  horasMensuales    Decimal  @db.Decimal(5, 2)
+  diasConsecutivos  Int      @default(0)
+  
+  // Acumulado anual
+  horasAnuales      Decimal  @db.Decimal(6, 2)
+  
+  // Alertas
+  alertaMensual     Boolean  @default(false)  // > 185h
+  alertaAnual       Boolean  @default(false)  // > 2230h
+  alertaConsecutivos Boolean @default(false)  // > 3 días
+  
+  ultimoDescanso    DateTime? @db.Date
+  horasDescanso     Decimal?  @db.Decimal(3, 1)
+  
+  updatedAt         DateTime @updatedAt
+
+  @@unique([usuarioId, mes, año])
+  @@index([mes, año])
+}
+
+// 10. HABILITACIÓN CONTROLADOR - Dependencias autorizadas
+model HabilitacionControlador {
+  id                String   @id @default(cuid())
+  
+  // Relaciones
+  usuarioId         String
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  dependenciaId     String
+  dependencia       CategoriaDependencia @relation(fields: [dependenciaId], references: [id])
+  
+  fechaHabilitacion DateTime @db.Date
+  fechaVencimiento  DateTime? @db.Date
+  activa            Boolean  @default(true)
+  
+  observaciones     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([usuarioId, dependenciaId])
+  @@index([usuarioId])
+  @@index([dependenciaId])
+}
+
+// 11. CAMBIO TURNO - Solicitudes de cambio entre controladores
+model CambioTurno {
+  id                String   @id @default(cuid())
+  
+  // Relaciones
+  solicitanteId     String
+  solicitante       Usuario  @relation("Solicitante", fields: [solicitanteId], references: [id])
+  
+  reemplazanteId    String
+  reemplazante      Usuario  @relation("Reemplazante", fields: [reemplazanteId], references: [id])
+  
+  fechaTurno        DateTime @db.Date
+  
+  estado            EstadoCambioTurno @default(SOLICITADO)
+  
+  fechaSolicitud    DateTime @default(now())
+  fechaRespuesta    DateTime?
+  
+  motivoSolicitud   String
+  motivoRechazo     String?
+  
+  observaciones     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([solicitanteId, estado])
+  @@index([reemplazanteId, estado])
+  @@index([fechaTurno])
+}
+
+// 12. CATEGORÍA DEPENDENCIA - TWR, APP, ACC, FSS
+model CategoriaDependencia {
+  id                String   @id @default(cuid())
+  
+  codigo            String   @unique  // TWR, APP, ACC, FSS
+  nombre            String
+  descripcion       String?
+  
+  categoria         CategoriaHabilitacion
+  
+  activa            Boolean  @default(true)
+  
+  // Relaciones
+  habilitaciones    HabilitacionControlador[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([codigo])
+  @@index([categoria])
+}
+
+// 13. CONFIGURACIÓN - Parámetros del sistema
+model Configuracion {
+  id                String   @id @default(cuid())
+  
+  clave             String   @unique
+  valor             String
+  tipo              String   // string, number, boolean, json
+  descripcion       String?
+  
+  updatedAt         DateTime @updatedAt
+
+  @@index([clave])
+}
