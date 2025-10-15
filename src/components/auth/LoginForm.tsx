@@ -2,132 +2,154 @@
 'use client'
 
 import { useState } from 'react'
-import { loginAction } from '@/app/actions/auth'
+import { useFormStatus } from 'react-dom'
 import Image from 'next/image'
+import { loginAction } from '@/app/actions/auth'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { AlertCircle, Loader2, Mail, Lock } from 'lucide-react'
 
-export function LoginForm() {
-  const [error, setError] = useState<string>('')
-  const [loading, setLoading] = useState(false)
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError('')
-    setLoading(true)
-
-    const formData = new FormData(event.currentTarget)
-    const result = await loginAction(formData)
-
-    if (result?.error) {
-      setError(result.error)
-      setLoading(false)
-    }
-    // Si no hay error, el usuario será redirigido por el server action
-  }
-
+function SubmitButton() {
+  const { pending } = useFormStatus()
+  
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-      {/* Logo y Header */}
-      <div className="text-center space-y-4">
-        <div className="flex justify-center">
-          <Image
-            src="/logo-dgac.jpg"
-            alt="DGAC Chile"
-            width={120}
-            height={120}
-            priority
-            className="object-contain"
-          />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Sistema SGTHE
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Gestión de Turnos y Horas Extraordinarias
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            Dirección General de Aeronáutica Civil - Chile
-          </p>
-        </div>
-      </div>
-
-      {/* Mensaje informativo */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <p className="text-xs text-blue-800 text-center">
-          <span className="font-semibold">Acceso restringido:</span> Use su correo institucional @dgac.gob.cl
-        </p>
-      </div>
-
-      {/* Formulario */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Error message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-sm text-red-800 text-center">{error}</p>
-          </div>
-        )}
-
-        {/* Email input */}
-        <div className="space-y-2">
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Correo Electrónico
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            placeholder="usuario@dgac.gob.cl"
-            disabled={loading}
-            className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-        </div>
-
-        {/* Password input */}
-        <div className="space-y-2">
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Contraseña
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            placeholder="••••••••"
-            disabled={loading}
-            className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-        </div>
-
-        {/* Submit button */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-        >
-          {loading ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Iniciando sesión...
-            </>
-          ) : (
-            'Iniciar Sesión'
-          )}
-        </button>
-      </form>
-
-      {/* Footer links */}
-      <div className="text-center space-y-2 pt-4 border-t">
-        <p className="text-xs text-gray-500">
-          ¿Problemas para acceder? Contacte al administrador del sistema
-        </p>
-      </div>
-    </div>
+    <Button 
+      type="submit" 
+      className="w-full" 
+      disabled={pending}
+      size="lg"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Iniciando sesión...
+        </>
+      ) : (
+        'Iniciar Sesión'
+      )}
+    </Button>
   )
 }
 
+export default function LoginForm() {
+  const [error, setError] = useState<string>('')
+
+  async function handleSubmit(formData: FormData) {
+    setError('')
+    const result = await loginAction(formData)
+    
+    if (result?.error) {
+      setError(result.error)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
+      <Card className="w-full max-w-md shadow-2xl border-0">
+        <CardHeader className="space-y-4 pb-8">
+          {/* Logo DGAC */}
+          <div className="flex justify-center">
+            <div className="relative w-24 h-24 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-4 shadow-lg">
+              <Image
+                src="/logo-dgac.png"
+                alt="Logo DGAC"
+                fill
+                className="object-contain p-3"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* Título y descripción */}
+          <div className="space-y-2 text-center">
+            <CardTitle className="text-3xl font-bold tracking-tight">
+              Sistema SGTHE
+            </CardTitle>
+            <CardDescription className="text-base">
+              Gestión de Turnos y Horas Extraordinarias
+            </CardDescription>
+          </div>
+
+          {/* Badge informativo */}
+          <div className="flex justify-center">
+            <Badge variant="outline" className="text-xs font-normal px-3 py-1">
+              <Mail className="mr-1.5 h-3 w-3" />
+              Use su correo institucional @dgac.gob.cl
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <form action={handleSubmit} className="space-y-6">
+            {/* Error message */}
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4 flex items-start gap-3 animate-in fade-in-50 duration-300">
+                <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Error de autenticación</p>
+                  <p className="text-sm opacity-90 mt-1">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Email field */}
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">
+                Correo Electrónico
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="usuario@dgac.gob.cl"
+                  required
+                  autoComplete="email"
+                  className="pl-10 h-11"
+                />
+              </div>
+            </div>
+
+            {/* Password field */}
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium">
+                Contraseña
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="pl-10 h-11"
+                />
+              </div>
+            </div>
+
+            {/* Submit button */}
+            <div className="pt-2">
+              <SubmitButton />
+            </div>
+          </form>
+
+          {/* Footer info */}
+          <div className="mt-8 pt-6 border-t text-center">
+            <p className="text-xs text-muted-foreground">
+              Dirección General de Aeronáutica Civil
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              © 2025 DGAC - Todos los derechos reservados
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
