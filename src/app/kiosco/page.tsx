@@ -8,8 +8,8 @@ import { KioscoActionButton } from '@/components/kiosco/KioscoActionButton'
 import { AuthPINModal } from '@/components/kiosco/AuthPINModal'
 import type { KioscoSession, KioscoAction } from '@/types/kiosco'
 
-// ID de la unidad ACCO (en producción vendría de contexto/config)
-const UNIDAD_ACCO_ID = 'acco-unit-id' // Reemplazar con ID real
+// ID de la unidad ACCO (obtenido de la base de datos)
+const UNIDAD_ACCO_ID = 'cmgtzjz5700011ifkaa7ap88w'
 
 export default function KioscoPage() {
   const router = useRouter()
