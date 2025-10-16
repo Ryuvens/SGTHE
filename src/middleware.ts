@@ -11,6 +11,7 @@ export default auth((req) => {
                           nextUrl.pathname.startsWith('/turnos') ||
                           nextUrl.pathname.startsWith('/horas-extras') ||
                           nextUrl.pathname.startsWith('/usuarios') ||
+                          nextUrl.pathname.startsWith('/reportes') ||
                           nextUrl.pathname.startsWith('/configuracion')
 
   // Rutas de autenticación (login, register, etc.)

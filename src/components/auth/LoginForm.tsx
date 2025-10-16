@@ -3,6 +3,7 @@
 
 import { useState } from 'react'
 import { useFormStatus } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { loginAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AlertCircle, Loader2, Mail, Lock } from 'lucide-react'
+import { toast } from 'sonner'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -36,6 +38,7 @@ function SubmitButton() {
 
 export default function LoginForm() {
   const [error, setError] = useState<string>('')
+  const router = useRouter()
 
   async function handleSubmit(formData: FormData) {
     setError('')
@@ -43,6 +46,15 @@ export default function LoginForm() {
     
     if (result?.error) {
       setError(result.error)
+      toast.error('Error de autenticación', {
+        description: result.error,
+      })
+    } else {
+      // Login exitoso
+      toast.success('¡Bienvenido!', {
+        description: 'Has iniciado sesión correctamente',
+      })
+      router.push('/dashboard')
     }
   }
 
