@@ -92,6 +92,26 @@ export function UsuariosDataTable({ data }: DataTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [userToDelete, setUserToDelete] = React.useState<UsuarioWithRelations | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
+  
+  // Responsive - ocultar columnas en móvil
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        // Móvil: ocultar columnas menos importantes
+        setColumnVisibility({
+          numeroLicencia: false,
+          habilitaciones: false,
+        })
+      } else {
+        // Desktop: mostrar todas
+        setColumnVisibility({})
+      }
+    }
+    
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Definir columnas
   const columns: ColumnDef<UsuarioWithRelations>[] = React.useMemo(
@@ -367,9 +387,9 @@ export function UsuariosDataTable({ data }: DataTableProps) {
     <div className="w-full space-y-4">
       {/* Barra de herramientas */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-1 items-center space-x-2">
+        <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center md:space-x-2">
           {/* Búsqueda global */}
-          <div className="relative max-w-sm flex-1">
+          <div className="relative w-full md:max-w-sm md:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar usuarios..."
@@ -379,12 +399,14 @@ export function UsuariosDataTable({ data }: DataTableProps) {
             />
           </div>
           
-          {/* Filtro de rol */}
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Filtrar por rol" />
-            </SelectTrigger>
+          {/* Filtros en una fila en móvil */}
+          <div className="flex gap-2">
+            {/* Filtro de rol */}
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filtrar por rol" />
+              </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los roles</SelectItem>
               <SelectItem value="ADMIN_SISTEMA">Admin Sistema</SelectItem>
@@ -393,27 +415,28 @@ export function UsuariosDataTable({ data }: DataTableProps) {
               <SelectItem value="ATCO">Controlador</SelectItem>
               <SelectItem value="ATCO_ENTRENAMIENTO">ATCO Entren.</SelectItem>
             </SelectContent>
-          </Select>
-          
-          {/* Filtro de estado */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Activos</SelectItem>
-              <SelectItem value="inactive">Inactivos</SelectItem>
-            </SelectContent>
-          </Select>
+            </Select>
+            
+            {/* Filtro de estado */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[150px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="inactive">Inactivos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         {/* Acciones */}
-        <div className="flex items-center space-x-2">
-          {/* Selector de columnas */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Selector de columnas - solo desktop */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="hidden md:flex">
                 Columnas <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -444,18 +467,20 @@ export function UsuariosDataTable({ data }: DataTableProps) {
             size="sm"
             onClick={handleExport}
             disabled={table.getFilteredRowModel().rows.length === 0}
+            className="flex-1 md:flex-none"
           >
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
+            <Download className="mr-0 md:mr-2 h-4 w-4" />
+            <span className="hidden md:inline">Exportar</span>
           </Button>
           
           {/* Nuevo usuario */}
           <Button
             size="sm"
             onClick={() => router.push('/usuarios/nuevo')}
+            className="flex-1 md:flex-none"
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Usuario
+            <Plus className="mr-0 md:mr-2 h-4 w-4" />
+            <span className="md:inline">Nuevo</span>
           </Button>
         </div>
       </div>
@@ -478,8 +503,8 @@ export function UsuariosDataTable({ data }: DataTableProps) {
       )}
 
       {/* Tabla */}
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
+      <div className="w-full overflow-x-auto rounded-md border">
+        <Table className="min-w-[800px]">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

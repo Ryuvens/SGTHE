@@ -149,17 +149,38 @@ export function UserForm({ usuario, isEdit = false, unidades = [] }: UserFormPro
         pin: values.pin || undefined,
       }
 
-      // Solo incluir password si es nuevo usuario o si se está cambiando
-      if (!isEdit && values.password) {
+      // Manejar contraseña
+      if (values.password) {
+        // Si hay contraseña, siempre incluirla (será hasheada en el server)
         data.password = values.password
-      } else if (isEdit && !values.password) {
-        // En edición, si no hay password, no la incluimos
-        delete data.password
       }
 
       let result
       if (isEdit && usuario) {
-        result = await updateUsuario(usuario.id, data)
+        // Si hay contraseña, usar updatePassword en su lugar
+        if (values.password) {
+          // Primero actualizar datos sin contraseña
+          const dataWithoutPassword = { ...data }
+          delete dataWithoutPassword.password
+          
+          const updateResult = await updateUsuario(usuario.id, dataWithoutPassword)
+          if (!updateResult.success) {
+            toast.error(updateResult.error || 'Error al actualizar usuario')
+            setIsLoading(false)
+            return
+          }
+          
+          // Luego actualizar la contraseña
+          const { updatePassword } = await import('@/lib/actions/usuarios')
+          result = await updatePassword({
+            userId: usuario.id,
+            newPassword: values.password,
+            isAdmin: true // Asumiendo que quien edita tiene permisos
+          })
+        } else {
+          // Sin cambio de contraseña, solo actualizar datos
+          result = await updateUsuario(usuario.id, data)
+        }
       } else {
         // Para nuevo usuario, password es requerido
         if (!values.password) {
