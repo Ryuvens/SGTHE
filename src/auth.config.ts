@@ -41,11 +41,6 @@ export const authConfig: NextAuthConfig = {
           throw new Error('Credenciales inválidas')
         }
 
-        // Verificar que el email esté verificado
-        if (!user.emailVerified) {
-          throw new Error('Debe verificar su correo electrónico antes de iniciar sesión')
-        }
-
         // Verificar que el usuario esté activo
         if (!user.activo) {
           throw new Error('Su cuenta está inactiva. Contacte al administrador')
