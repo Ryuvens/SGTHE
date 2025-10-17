@@ -10,6 +10,10 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { RolUsuario } from '@prisma/client'
 
+// Force dynamic rendering - no cache
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface UsuarioDetailPageProps {
   params: {
     id: string

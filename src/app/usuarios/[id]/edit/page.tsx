@@ -8,6 +8,10 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// Force dynamic rendering - no cache
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface EditUsuarioPageProps {
   params: {
     id: string

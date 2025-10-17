@@ -1,6 +1,10 @@
 import { Suspense } from 'react'
 import { Users, UserPlus, Shield, Activity } from 'lucide-react'
 import { getUsuarios } from '@/lib/actions/usuarios'
+
+// Force dynamic rendering - no cache
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { UsuariosDataTable } from '@/components/usuarios/data-table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

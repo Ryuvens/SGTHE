@@ -101,7 +101,8 @@ export async function getUsuarios(
           ]
         } : {},
         rol ? { rol } : {},
-        activo !== undefined ? { activo } : {},
+        // Por defecto solo mostrar usuarios activos, a menos que se especifique false
+        activo !== undefined ? { activo } : { activo: true },
       ]
     }
     
@@ -442,12 +443,11 @@ export async function deleteUsuario(id: string): Promise<ActionResponse> {
       }
     }
     
-    // Soft delete
+    // Soft delete - NO modificar email para mantener integridad de datos
     await prisma.usuario.update({
       where: { id },
       data: { 
-        activo: false,
-        email: `deleted_${Date.now()}_${usuario.email}` // Evitar conflictos
+        activo: false
       }
     })
     
