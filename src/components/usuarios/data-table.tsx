@@ -62,7 +62,6 @@ import { exportUsuariosToExcel } from './export-excel'
 
 interface DataTableProps {
   data: UsuarioWithRelations[]
-  onRefresh?: () => void
 }
 
 const rolColors: Record<RolUsuario, string> = {
@@ -81,7 +80,7 @@ const rolLabels: Record<RolUsuario, string> = {
   ATCO_ENTRENAMIENTO: 'ATCO Entrenamiento',
 }
 
-export function UsuariosDataTable({ data, onRefresh }: DataTableProps) {
+export function UsuariosDataTable({ data }: DataTableProps) {
   const router = useRouter()
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -340,7 +339,7 @@ export function UsuariosDataTable({ data, onRefresh }: DataTableProps) {
     
     if (result.success) {
       toast.success('Usuario eliminado correctamente')
-      onRefresh?.()
+      router.refresh()
     } else {
       toast.error(result.error || 'Error al eliminar usuario')
     }

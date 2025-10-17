@@ -147,9 +147,6 @@ async function UsuariosTable() {
       <CardContent>
         <UsuariosDataTable 
           data={result.data?.usuarios || []} 
-          onRefresh={() => {
-            // Refresh se maneja con router.refresh() en el componente
-          }}
         />
       </CardContent>
     </Card>
