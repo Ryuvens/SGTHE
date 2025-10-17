@@ -163,12 +163,13 @@ export function ConsolidadoMensualCard({
               <AlertCircle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h4 className="font-semibold text-orange-900">
-                  Requiere VCP (Vuelo de Control de Pericia)
+                  Requiere VCP (Verificación de la Competencia Profesional)
                 </h4>
                 <p className="mt-1 text-sm text-orange-800">
                   No has alcanzado las {horasMinimas} horas mínimas mensuales requeridas 
-                  según DAN 11. Debes realizar un vuelo de control de pericia con un instructor 
-                  para mantener tu habilitación vigente.
+                  según DAN 11. Debes someterte a una Verificación de la Competencia Profesional 
+                  para demostrar tus competencias. Esta verificación será documentada en el 
+                  formulario ATC-14 y se adjuntará al Informe Mensual de Actividades.
                 </p>
                 <p className="mt-2 text-xs font-medium text-orange-900">
                   Diferencia: {(horasMinimas - consolidado.totalHoras).toFixed(1)}h 

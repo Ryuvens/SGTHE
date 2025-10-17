@@ -96,7 +96,7 @@ export function RegistrosDelMesList({ registros }: RegistrosDelMesListProps) {
                         </Badge>
                       )}
                       {registro.esNocturno && (
-                        <Badge variant="outline" className="bg-slate-100">
+                        <Badge variant="outline" className="bg-slate-800 text-white border-slate-700">
                           <Moon className="mr-1 h-3 w-3" />
                           Nocturno
                         </Badge>
