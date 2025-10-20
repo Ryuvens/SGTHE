@@ -46,6 +46,43 @@ export type PublicacionWithDetails = Awaited<ReturnType<typeof getPublicacion>>[
 // ============================================
 
 /**
+ * Obtener todos los roles mensuales (para página principal)
+ */
+export async function getRolesMenuales() {
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return { success: false, error: 'No autenticado', data: [] }
+    }
+
+    // Por ahora, obtener todas las publicaciones
+    // TODO: Filtrar por unidad del usuario
+    const roles = await prisma.publicacionTurnos.findMany({
+      include: {
+        unidad: {
+          select: {
+            nombre: true,
+            codigo: true,
+          }
+        },
+        _count: {
+          select: { asignaciones: true }
+        }
+      },
+      orderBy: [
+        { año: 'desc' },
+        { mes: 'desc' }
+      ]
+    })
+    
+    return { success: true, data: roles }
+  } catch (error) {
+    console.error('Error al obtener roles mensuales:', error)
+    return { success: false, error: 'Error al obtener roles', data: [] }
+  }
+}
+
+/**
  * Obtener todas las publicaciones de una unidad
  */
 export async function getPublicaciones(unidadId: string) {
