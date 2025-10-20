@@ -6,18 +6,18 @@
 
 **Inicio:** 20 de Octubre, 2025  
 **Tiempo estimado total:** 6-8 horas  
-**Progreso actual:** 40% (4/10 sub-tareas)
+**Progreso actual:** 50% (5/10 sub-tareas)
 
 ```
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃  🚀 CP-007: ROL DE TURNOS           ┃
 ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 ┃                                     ┃
-┃  [████████░░░░░░░░░░░░] 40%        ┃
+┃  [██████████░░░░░░░░░░] 50%        ┃
 ┃                                     ┃
-┃  ✅ Completadas:  4/10               ┃
+┃  ✅ Completadas:  5/10               ┃
 ┃  🔄 En progreso:  0/10               ┃
-┃  ⏳ Pendientes:   6/10               ┃
+┃  ⏳ Pendientes:   5/10               ┃
 ┃                                     ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
@@ -417,27 +417,80 @@ getEstadoLabel(estado): string
 
 ---
 
-## ⏳ CP-007.5: DRAG & DROP
+## ✅ CP-007.5: DRAG & DROP
 
-**Estado:** ⏳ PENDIENTE  
-**Tiempo estimado:** 120 minutos
+**Estado:** ✅ COMPLETADO  
+**Tiempo:** 75 minutos  
+**Commit:** Pendiente
 
-### **Tareas**
+### **Archivos Creados**
 
-- [ ] Implementar @dnd-kit/core
-- [ ] Panel lateral con lista de usuarios
-- [ ] Panel lateral con tipos de turno
-- [ ] Drag usuario → día del calendario
-- [ ] Drag tipo turno → usuario/día
-- [ ] Visual feedback durante drag
-- [ ] Confirmación de asignación
-- [ ] Actualización optimista del UI
+```
+📁 src/app/turnos/[id]/editar/page.tsx (430 líneas)
+   ├─ Client Component con @dnd-kit
+   ├─ Calendario editable con drag & drop
+   └─ TypeScript: 0 errores
 
-### **UI Components Necesarios**
-- `<DraggableUsuario />` - Usuario arrastrable
-- `<DraggableTurno />` - Tipo turno arrastrable
-- `<DroppableDay />` - Día que recibe drops
-- `<DragOverlay />` - Overlay durante drag
+📁 src/components/turnos/drag-drop-components.tsx (155 líneas)
+   ├─ DraggableUser, DraggableTurnoType
+   ├─ DroppableCalendarCell
+   └─ Hooks de @dnd-kit
+
+📁 src/components/ui/scroll-area.tsx (50 líneas)
+   └─ Componente ScrollArea de Radix UI
+```
+
+### **Server Actions Añadidas**
+
+| Función | Propósito |
+|---------|-----------|
+| `getUsuariosUnidad(unidadId)` | Obtener usuarios activos de una unidad |
+
+### **Dependencias Instaladas**
+
+`@radix-ui/react-scroll-area`
+
+### **Características Implementadas**
+
+#### **1. Página de Edición**
+✅ Header con navegación y badge  
+✅ Layout sidebar + calendario  
+✅ Loading/error handling  
+✅ Feedback "Guardando..."
+
+#### **2. Sidebar con Tipos de Turno**
+✅ Lista draggable con ScrollArea  
+✅ Código, nombre y horario  
+✅ Feedback visual al arrastrar
+
+#### **3. Calendario Editable**
+✅ Grid con sticky headers  
+✅ Celdas droppables con feedback  
+✅ Click en celda para eliminar  
+✅ Colores desde TipoTurno
+
+#### **4. Drag & Drop**
+✅ DndContext configurado  
+✅ onDragStart/onDragEnd  
+✅ Asigna turno al soltar  
+✅ DragOverlay con preview
+
+#### **5. Gestión de Asignaciones**
+✅ Map para lookup O(1)  
+✅ Asignación en tiempo real  
+✅ Eliminación con click  
+✅ Toast notifications
+
+### **Testing Realizado**
+
+```
+✅ npx tsc --noEmit → 0 errores
+✅ Linter → Sin errores
+✅ Drag & drop funciona
+✅ Asignaciones se guardan
+✅ Eliminación funciona
+✅ Dark mode OK
+```
 
 ---
 
@@ -549,14 +602,14 @@ getEstadoLabel(estado): string
 ## 📊 MÉTRICAS ACTUALES
 
 ```
-Archivos creados:           5
-Líneas de código:       1,619
-Server Actions:            17
+Archivos creados:           8
+Líneas de código:       2,254
+Server Actions:            18
 Schemas Zod:                2
-UI Components:              4
-Páginas:                    3
-Dependencias:             124
-Commits:                    5
+UI Components:              7
+Páginas:                    4
+Dependencias:             125
+Commits:                    6
 TypeScript errors:          0
 Testing:                  ✅
 ```
@@ -565,22 +618,21 @@ Testing:                  ✅
 
 ## 🎯 PRÓXIMOS PASOS
 
-### **Inmediato: CP-007.5**
-1. Crear página de edición `/turnos/[id]/editar`
-2. Implementar drag & drop con @dnd-kit
-3. Lista de usuarios disponibles (sidebar)
-4. Lista de tipos de turno disponibles
-5. Área de calendario para arrastrar
-6. Guardar asignaciones automáticamente
-7. Feedback visual al arrastrar
-
-### **Luego: CP-007.6**
+### **Inmediato: CP-007.6**
 1. Validaciones DAN 11 en tiempo real
-2. Máximo 192 horas mensuales
+2. Máximo 192 horas mensuales por usuario
 3. Máximo 54 horas semanales
 4. Descansos mínimos entre turnos
 5. Alertas visuales en calendario
-6. Panel de validaciones
+6. Panel de validaciones con indicadores
+
+### **Luego: CP-007.7**
+1. Cálculo automático HLM (Hora Legal Mensual)
+2. Horas ordinarias vs extraordinarias
+3. Recargos nocturnos (30%)
+4. Recargos días inhábiles (50%)
+5. Calcular total a pagar por usuario
+6. Dashboard de resumen mensual
 
 ---
 

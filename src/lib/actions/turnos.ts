@@ -523,6 +523,48 @@ export async function getAsignacionesUsuario(
 }
 
 // ============================================
+// USUARIOS
+// ============================================
+
+/**
+ * Obtener usuarios de una unidad para asignación de turnos
+ */
+export async function getUsuariosUnidad(unidadId: string) {
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return { success: false, error: 'No autenticado', data: [] }
+    }
+
+    const usuarios = await prisma.usuario.findMany({
+      where: {
+        unidadId,
+        activo: true,
+      },
+      select: {
+        id: true,
+        nombre: true,
+        apellido: true,
+        rut: true,
+        abreviatura: {
+          select: {
+            codigo: true,
+          }
+        }
+      },
+      orderBy: {
+        apellido: 'asc'
+      }
+    })
+
+    return { success: true, data: usuarios }
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error)
+    return { success: false, error: 'Error al obtener usuarios', data: [] }
+  }
+}
+
+// ============================================
 // UNIDADES
 // ============================================
 
