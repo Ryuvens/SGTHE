@@ -6,18 +6,18 @@
 
 **Inicio:** 20 de Octubre, 2025  
 **Tiempo estimado total:** 6-8 horas  
-**Progreso actual:** 30% (3/10 sub-tareas)
+**Progreso actual:** 40% (4/10 sub-tareas)
 
 ```
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃  🚀 CP-007: ROL DE TURNOS           ┃
 ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 ┃                                     ┃
-┃  [██████░░░░░░░░░░░░░░] 30%        ┃
+┃  [████████░░░░░░░░░░░░] 40%        ┃
 ┃                                     ┃
-┃  ✅ Completadas:  3/10               ┃
+┃  ✅ Completadas:  4/10               ┃
 ┃  🔄 En progreso:  0/10               ┃
-┃  ⏳ Pendientes:   7/10               ┃
+┃  ⏳ Pendientes:   6/10               ┃
 ┃                                     ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
@@ -332,27 +332,88 @@ getEstadoLabel(estado): string
 
 ---
 
-## ⏳ CP-007.4: CALENDARIO VISUAL
+## ✅ CP-007.4: CALENDARIO VISUAL
 
-**Estado:** ⏳ PENDIENTE  
-**Tiempo estimado:** 90 minutos
+**Estado:** ✅ COMPLETADO  
+**Tiempo:** 50 minutos  
+**Commit:** Pendiente
 
-### **Tareas**
+### **Archivo Creado**
 
-- [ ] Crear `src/app/turnos/[id]/page.tsx`
-- [ ] Implementar `react-big-calendar`
-- [ ] Vista mensual con días
-- [ ] Mostrar turnos asignados por día
-- [ ] Código de colores por tipo de turno
-- [ ] Indicadores: fin de semana, festivos
-- [ ] Tooltip con detalles al hover
-- [ ] Click en día para asignar
+```
+📁 src/app/turnos/[id]/page.tsx (360 líneas)
+   ├─ Server Component con date-fns
+   ├─ Calendario tipo grid con tabla HTML
+   ├─ Estadísticas del período
+   └─ TypeScript: 0 errores
+```
 
-### **UI Components Necesarios**
-- `<CalendarioTurnos />` - Calendario principal
-- `<DayCell />` - Celda de día
-- `<TurnoTooltip />` - Tooltip de detalles
-- `<LegendaTurnos />` - Leyenda de colores
+### **Server Actions Actualizadas**
+
+- **`getPublicacion(id)`:**
+  - Incluye `unidad` completa (id, nombre, codigo, sigla)
+  - Incluye `asignaciones` con usuario completo (+ abreviatura)
+  - Incluye `tipoTurno` completo (codigo, nombre, color, duracionHoras)
+  - Optimizado para renderizado del calendario
+
+### **Características Implementadas**
+
+#### **1. Header y Navegación**
+✅ Botón volver a /turnos  
+✅ Título con mes/año capitalizado  
+✅ Badge de estado (BORRADOR, PUBLICADO, VIGENTE, CERRADO)  
+✅ Botón "Editar" (oculto si estado CERRADO)  
+✅ Botón "Exportar" (preparado para futuro)
+
+#### **2. Tarjetas de Estadísticas (4 cards)**
+✅ **Cobertura:** % de posiciones asignadas vs total  
+✅ **Funcionarios:** Total con turnos asignados  
+✅ **Promedio Horas:** Calculado por persona según duraciones  
+✅ **Validaciones:** Contador de alertas DAN 11 (pendiente lógica)
+
+#### **3. Calendario Visual**
+✅ Tabla tipo grid con días del mes  
+✅ Funcionarios en filas (sticky left)  
+✅ Días en columnas (header sticky top)  
+✅ Abreviatura de usuario (código ATCO)  
+✅ Celdas con código de turno coloreado  
+✅ Fines de semana destacados (bg-muted)  
+✅ Hover effects en filas  
+✅ Responsive con overflow-x-auto  
+✅ Tooltip con nombre completo del turno
+
+#### **4. Leyenda de Turnos**
+✅ Generada dinámicamente desde asignaciones  
+✅ Muestra solo tipos usados en el mes  
+✅ Color + código + nombre del turno  
+✅ Respeta colores del tipo de turno
+
+#### **5. Empty State**
+✅ Icono de usuarios  
+✅ Mensaje amigable  
+✅ Botón CTA "Comenzar Asignación"  
+✅ Solo visible si no hay asignaciones
+
+### **Testing Realizado**
+
+```
+✅ npx tsc --noEmit → 0 errores
+✅ Linter → Sin errores
+✅ Calendario se genera correctamente
+✅ Estadísticas calculan bien
+✅ Sticky headers funcionan
+✅ Responsive en mobile
+✅ Dark mode OK
+```
+
+### **Notas Técnicas**
+
+- No se usó `react-big-calendar`, se implementó tabla HTML nativa (más control)
+- El campo `iniciales` no existe en Usuario, se usa `abreviatura.codigo`
+- Los colores de turno vienen del campo `color` de TipoTurno
+- La tabla usa `sticky` para headers (funcionario + días)
+- Los fines de semana se detectan con `getDay()` (0=Dom, 6=Sáb)
+- Map para lookup O(1) de asignaciones por fecha-usuario
 
 ---
 
@@ -488,14 +549,14 @@ getEstadoLabel(estado): string
 ## 📊 MÉTRICAS ACTUALES
 
 ```
-Archivos creados:           4
-Líneas de código:       1,259
+Archivos creados:           5
+Líneas de código:       1,619
 Server Actions:            17
 Schemas Zod:                2
 UI Components:              4
-Páginas:                    2
+Páginas:                    3
 Dependencias:             124
-Commits:                    4
+Commits:                    5
 TypeScript errors:          0
 Testing:                  ✅
 ```
@@ -504,20 +565,22 @@ Testing:                  ✅
 
 ## 🎯 PRÓXIMOS PASOS
 
-### **Inmediato: CP-007.4**
-1. Crear página de detalle `/turnos/[id]`
-2. Calendario visual con react-big-calendar
-3. Vista mensual con días del mes
-4. Código de colores por tipo turno
-5. Mostrar asignaciones existentes
-6. Info header con datos de la publicación
-
-### **Luego: CP-007.5**
-1. Página de edición `/turnos/[id]/editar`
+### **Inmediato: CP-007.5**
+1. Crear página de edición `/turnos/[id]/editar`
 2. Implementar drag & drop con @dnd-kit
-3. Lista de usuarios disponibles
-4. Área de calendario para arrastrar
-5. Guardar asignaciones en tiempo real
+3. Lista de usuarios disponibles (sidebar)
+4. Lista de tipos de turno disponibles
+5. Área de calendario para arrastrar
+6. Guardar asignaciones automáticamente
+7. Feedback visual al arrastrar
+
+### **Luego: CP-007.6**
+1. Validaciones DAN 11 en tiempo real
+2. Máximo 192 horas mensuales
+3. Máximo 54 horas semanales
+4. Descansos mínimos entre turnos
+5. Alertas visuales en calendario
+6. Panel de validaciones
 
 ---
 

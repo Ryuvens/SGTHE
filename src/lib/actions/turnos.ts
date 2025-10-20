@@ -126,7 +126,14 @@ export async function getPublicacion(id: string) {
     const publicacion = await prisma.publicacionTurnos.findUnique({
       where: { id },
       include: {
-        unidad: true,
+        unidad: {
+          select: {
+            id: true,
+            nombre: true,
+            codigo: true,
+            sigla: true,
+          }
+        },
         asignaciones: {
           include: {
             usuario: {
@@ -135,9 +142,23 @@ export async function getPublicacion(id: string) {
                 nombre: true,
                 apellido: true,
                 rut: true,
+                abreviatura: {
+                  select: {
+                    codigo: true,
+                  }
+                }
               }
             },
-            tipoTurno: true,
+            tipoTurno: {
+              select: {
+                id: true,
+                codigo: true,
+                nombre: true,
+                color: true,
+                esNocturno: true,
+                duracionHoras: true,
+              }
+            },
           },
           orderBy: [
             { fecha: 'asc' },
