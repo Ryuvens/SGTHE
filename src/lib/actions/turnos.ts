@@ -17,8 +17,8 @@ const CreatePublicacionSchema = z.object({
   unidadId: z.string().cuid(),
   mes: z.number().min(1).max(12),
   año: z.number().min(2024).max(2030),
-  fechaInicio: z.date(),
-  fechaFin: z.date(),
+  observaciones: z.string().optional(),
+  duplicarAnterior: z.boolean().optional(),
 })
 
 const AsignarTurnoSchema = z.object({
@@ -232,14 +232,18 @@ export async function createPublicacion(
       }
     }
 
+    // Calcular fechas de inicio y fin del mes
+    const fechaInicio = startOfMonth(new Date(validated.año, validated.mes - 1))
+    const fechaFin = endOfMonth(fechaInicio)
+
     // Crear la publicación
     const publicacion = await prisma.publicacionTurnos.create({
       data: {
         unidadId: validated.unidadId,
         mes: validated.mes,
         año: validated.año,
-        fechaInicio: validated.fechaInicio,
-        fechaFin: validated.fechaFin,
+        fechaInicio,
+        fechaFin,
         estado: 'BORRADOR',
         creadoPor: session.user.id,
       },
@@ -247,6 +251,8 @@ export async function createPublicacion(
         unidad: true,
       }
     })
+
+    // TODO: Si duplicarAnterior es true, copiar asignaciones del mes anterior
 
     revalidatePath('/turnos')
     return { success: true, data: publicacion }
@@ -492,6 +498,35 @@ export async function getAsignacionesUsuario(
   } catch (error) {
     console.error('Error al obtener asignaciones:', error)
     return { success: false, error: 'Error al obtener asignaciones' }
+  }
+}
+
+// ============================================
+// UNIDADES
+// ============================================
+
+/**
+ * Obtener todas las unidades disponibles
+ */
+export async function getUnidades() {
+  try {
+    const unidades = await prisma.unidad.findMany({
+      where: { activa: true },
+      select: {
+        id: true,
+        nombre: true,
+        codigo: true,
+        sigla: true,
+      },
+      orderBy: {
+        nombre: 'asc'
+      }
+    })
+
+    return { success: true, data: unidades }
+  } catch (error) {
+    console.error('Error al obtener unidades:', error)
+    return { success: false, error: 'Error al obtener unidades', data: [] }
   }
 }
 
