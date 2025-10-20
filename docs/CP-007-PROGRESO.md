@@ -6,18 +6,18 @@
 
 **Inicio:** 20 de Octubre, 2025  
 **Tiempo estimado total:** 6-8 horas  
-**Progreso actual:** 10% (1/10 sub-tareas)
+**Progreso actual:** 20% (2/10 sub-tareas)
 
 ```
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃  🚀 CP-007: ROL DE TURNOS           ┃
 ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
 ┃                                     ┃
-┃  [██░░░░░░░░░░░░░░░░░░] 10%        ┃
+┃  [████░░░░░░░░░░░░░░░░] 20%        ┃
 ┃                                     ┃
-┃  ✅ Completadas:  1/10               ┃
-┃  🔄 En progreso:  0/10               ┃
-┃  ⏳ Pendientes:   9/10               ┃
+┃  ✅ Completadas:  2/10               ┃
+┃  🔄 En progreso:  1/10               ┃
+┃  ⏳ Pendientes:   7/10               ┃
 ┃                                     ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
@@ -171,27 +171,94 @@ PublicacionTurnos {
 
 ---
 
-## ⏳ CP-007.2: PÁGINA PRINCIPAL ROL DE TURNOS
+## ✅ CP-007.2: PÁGINA PRINCIPAL ROL DE TURNOS
 
-**Estado:** ⏳ PENDIENTE  
-**Tiempo estimado:** 60 minutos
+**Estado:** ✅ COMPLETADO  
+**Tiempo:** 30 minutos  
+**Commit:** `21929bb`
 
-### **Tareas**
+### **Archivo Creado**
 
-- [ ] Crear `src/app/turnos/page.tsx`
-- [ ] Tabla con TanStack Table
-- [ ] Columnas: Mes/Año, Unidad, Estado, Asignaciones, Acciones
-- [ ] Filtros por mes, año, estado
-- [ ] Botón "Nueva Publicación"
-- [ ] Indicadores visuales de estado (badges)
-- [ ] Loading states con Suspense
-- [ ] Empty state si no hay publicaciones
+```
+📁 src/app/turnos/page.tsx
+   ├─ 240 líneas
+   ├─ 3 componentes principales
+   ├─ Integración con Server Actions
+   └─ TypeScript: 0 errores
+```
 
-### **UI Components Necesarios**
-- `<PublicacionesTable />` - Tabla principal
-- `<EstadoBadge />` - Badge de estado
-- `<PublicacionFilters />` - Filtros
-- `<NewPublicacionButton />` - Botón crear
+### **Componentes Implementados**
+
+#### **1. Página Principal (TurnosPage)**
+| Característica | Estado |
+|---------------|--------|
+| Header con título y descripción | ✅ |
+| Botón "Nuevo Rol Mensual" | ✅ |
+| Layout responsive | ✅ |
+| Dark mode support | ✅ |
+| Dynamic rendering (sin caché) | ✅ |
+
+#### **2. Tarjetas de Estadísticas (EstadisticasTurnos)**
+| Tarjeta | Métrica |
+|---------|---------|
+| Rol Actual | Mes/año actual con estado |
+| Total Roles | Contador de publicaciones |
+| Asignaciones | Total de turnos asignados |
+| Estado | Indicador de validaciones |
+
+#### **3. Tabla de Roles (RolesTable)**
+| Característica | Estado |
+|---------------|--------|
+| Listado de publicaciones | ✅ |
+| Orden por año/mes descendente | ✅ |
+| Badges de estado con colores | ✅ |
+| Contador de asignaciones | ✅ |
+| Botones Ver/Gestionar | ✅ |
+| Empty state con ilustración | ✅ |
+| Hover effects | ✅ |
+| Nombres de meses en español | ✅ |
+
+### **Server Action Añadida**
+
+```typescript
+getRolesMenuales() {
+  // Obtiene todas las publicaciones
+  // Incluye: unidad, _count.asignaciones
+  // Ordenadas por: año DESC, mes DESC
+  // Autenticación: ✅
+}
+```
+
+### **Funciones de Utilidad**
+
+```typescript
+getEstadoBadgeVariant(estado): BadgeVariant
+  - PUBLICADO/VIGENTE → default (azul)
+  - BORRADOR → secondary (gris)
+  - CERRADO → outline (transparente)
+
+getEstadoLabel(estado): string
+  - Traduce estados a español legible
+```
+
+### **UI/UX Features**
+
+- **Badges de Estado:** Color-coded según estado del rol
+- **Empty State:** Mensaje amigable con call-to-action
+- **Formato de Fechas:** Capitalizado, español (ej: "Octubre 2025")
+- **Acciones Condicionales:** "Gestionar" oculto si rol cerrado
+- **Iconografía:** Lucide icons consistentes
+- **Responsive:** Adapta grid en mobile/tablet/desktop
+
+### **Testing Realizado**
+
+```
+✅ npx tsc --noEmit → 0 errores
+✅ Linter → Sin errores
+✅ Componentes server-side validados
+✅ Tipos TypeScript correctos
+✅ Rutas correctamente linkadas
+```
 
 ---
 
@@ -374,12 +441,13 @@ PublicacionTurnos {
 ## 📊 MÉTRICAS ACTUALES
 
 ```
-Archivos creados:           1
-Líneas de código:         618
-Server Actions:            15
+Archivos creados:           2
+Líneas de código:         884
+Server Actions:            16
 Schemas Zod:                2
+UI Components:              3
 Dependencias:             124
-Commits:                    1
+Commits:                    3
 TypeScript errors:          0
 Testing:                  ✅
 ```
@@ -388,16 +456,20 @@ Testing:                  ✅
 
 ## 🎯 PRÓXIMOS PASOS
 
-### **Inmediato: CP-007.2**
-1. Crear página principal `/turnos`
-2. Implementar tabla de publicaciones
-3. Agregar filtros y búsqueda
-4. Botón "Nueva Publicación"
+### **Inmediato: CP-007.3**
+1. Crear página `/turnos/nuevo`
+2. Form de nueva publicación con React Hook Form
+3. Selector de mes/año
+4. Auto-calcular fechas inicio/fin
+5. Validación de período único
+6. Opción duplicar mes anterior
+7. Toast notifications
 
-### **Luego: CP-007.3**
-1. Form de nueva publicación
-2. Validación de período
-3. Opción duplicar mes anterior
+### **Luego: CP-007.4**
+1. Página de detalle `/turnos/[id]`
+2. Calendario visual con react-big-calendar
+3. Vista mensual con días
+4. Código de colores por tipo turno
 
 ---
 
