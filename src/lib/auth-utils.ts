@@ -1,6 +1,6 @@
 // src/lib/auth-utils.ts
 import { auth } from '@/auth'
-import { Rol } from '@/generated/prisma'
+import { RolUsuario } from '@prisma/client'
 
 /**
  * Obtiene la sesión del usuario actual
@@ -29,33 +29,26 @@ export async function isAuthenticated() {
 /**
  * Verifica si el usuario tiene un rol específico
  */
-export async function hasRole(role: Rol | Rol[]) {
+export async function hasRole(role: RolUsuario | RolUsuario[]) {
   const user = await getCurrentUser()
   if (!user) return false
 
   const roles = Array.isArray(role) ? role : [role]
-  return roles.includes(user.rol as Rol)
+  return roles.includes(user.rol as RolUsuario)
 }
 
 /**
  * Verifica si el usuario es administrador
  */
 export async function isAdmin() {
-  return await hasRole('ADMIN')
+  return await hasRole('ADMIN_SISTEMA')
 }
 
 /**
  * Verifica si el usuario es supervisor
  */
 export async function isSupervisor() {
-  return await hasRole(['ADMIN', 'SUPERVISOR'])
-}
-
-/**
- * Verifica si el usuario es encargado de personal
- */
-export async function isEncargadoPersonal() {
-  return await hasRole(['ADMIN', 'SUPERVISOR', 'ENCARGADO_PERSONAL'])
+  return await hasRole(['ADMIN_SISTEMA', 'JEFE_UNIDAD', 'SUPERVISOR_ATS'])
 }
 
 /**
@@ -72,11 +65,11 @@ export async function requireAuth() {
 /**
  * Lanza error si el usuario no tiene el rol requerido
  */
-export async function requireRole(role: Rol | Rol[]) {
+export async function requireRole(role: RolUsuario | RolUsuario[]) {
   const user = await requireAuth()
   const roles = Array.isArray(role) ? role : [role]
   
-  if (!roles.includes(user.rol as Rol)) {
+  if (!roles.includes(user.rol as RolUsuario)) {
     throw new Error('No autorizado: rol insuficiente')
   }
   
@@ -87,6 +80,6 @@ export async function requireRole(role: Rol | Rol[]) {
  * Lanza error si el usuario no es administrador
  */
 export async function requireAdmin() {
-  return await requireRole('ADMIN')
+  return await requireRole('ADMIN_SISTEMA')
 }
 

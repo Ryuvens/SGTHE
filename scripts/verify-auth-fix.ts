@@ -61,7 +61,6 @@ async function verifyAuthFix() {
     // 6. Verificar que el schema NO tiene emailVerified
     console.log('\n6️⃣  VERIFICANDO SCHEMA PRISMA...')
     
-    // @ts-expect-error - Si emailVerified existiera, esto no daría error
     const hasEmailVerified = 'emailVerified' in admin
     console.log('   Campo emailVerified existe:', hasEmailVerified ? '❌ SÍ (PROBLEMA!)' : '✅ NO (CORRECTO)')
 

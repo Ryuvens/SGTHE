@@ -13,7 +13,7 @@ export default async function ConfiguracionPage() {
   }
 
   // Verificar que sea admin
-  if (session.user.rol !== 'ADMIN') {
+  if (session.user.rol !== 'ADMIN_SISTEMA') {
     redirect('/dashboard')
   }
 

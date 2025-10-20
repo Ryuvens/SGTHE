@@ -1,12 +1,12 @@
 // src/types/next-auth.d.ts
 import { DefaultSession } from 'next-auth'
-import { Rol } from '@/generated/prisma'
+import { RolUsuario } from '@prisma/client'
 
 declare module 'next-auth' {
   interface Session {
     user: {
       id: string
-      rol: Rol
+      rol: RolUsuario
       nombre: string
       apellido: string
     } & DefaultSession['user']
@@ -14,7 +14,7 @@ declare module 'next-auth' {
 
   interface User {
     id: string
-    rol: Rol
+    rol: RolUsuario
     nombre: string
     apellido: string
   }
@@ -23,7 +23,7 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     id: string
-    rol: Rol
+    rol: RolUsuario
     nombre: string
     apellido: string
   }
