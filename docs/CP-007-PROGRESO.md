@@ -265,7 +265,8 @@ getEstadoLabel(estado): string
 ## ✅ CP-007.3: CREAR NUEVA PUBLICACIÓN
 
 **Estado:** ✅ COMPLETADO  
-**Tiempo:** 40 minutos
+**Tiempo:** 40 minutos  
+**Commit:** `f3cf953`
 
 ### **Archivos Creados**
 
