@@ -123,7 +123,74 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setActiveDragData(event.active.data.current)
   }
 
-  // Manejar drag end
+  // Función mejorada para eliminar asignación con verificación de existencia
+  async function handleEliminarAsignacion(asignacionId: string, key: string) {
+    console.log('🗑️ Intentando eliminar asignación:', { asignacionId, key })
+    
+    // CRÍTICO: Verificar que existe en el Map antes de eliminar
+    const asignacion = asignacionesRef.current.get(key)
+    
+    if (!asignacion) {
+      console.log('⚠️ Asignación no encontrada en Map (key):', key)
+      toast.error('Esta asignación ya fue eliminada')
+      return
+    }
+    
+    if (asignacion.id !== asignacionId) {
+      console.log('⚠️ ID de asignación no coincide:', {
+        enMap: asignacion.id,
+        solicitado: asignacionId
+      })
+      toast.error('La asignación ha cambiado, recarga la página')
+      return
+    }
+    
+    // Guardar referencia para posible rollback
+    const asignacionBackup = { ...asignacion }
+    
+    // Eliminar del Map inmediatamente (optimistic update)
+    setAsignaciones(prev => {
+      const newMap = new Map(prev)
+      newMap.delete(key)
+      console.log('✅ Eliminado del Map (optimistic):', key)
+      return newMap
+    })
+    
+    // Incrementar version para forzar re-render
+    setRenderVersion(v => v + 1)
+    
+    // Luego eliminar de la BD
+    try {
+      const result = await eliminarAsignacion(asignacionId)
+      
+      if (!result.success) {
+        console.error('❌ Error al eliminar de BD, revirtiendo...')
+        // Si falla, restaurar en el Map
+        setAsignaciones(prev => {
+          const newMap = new Map(prev)
+          newMap.set(key, asignacionBackup)
+          return newMap
+        })
+        setRenderVersion(v => v + 1)
+        toast.error(result.error || 'Error al eliminar')
+      } else {
+        console.log('✅ Turno eliminado exitosamente de BD')
+        toast.success('Turno eliminado')
+      }
+    } catch (error) {
+      console.error('💥 Error inesperado al eliminar:', error)
+      // Revertir
+      setAsignaciones(prev => {
+        const newMap = new Map(prev)
+        newMap.set(key, asignacionBackup)
+        return newMap
+      })
+      setRenderVersion(v => v + 1)
+      toast.error('Error al eliminar el turno')
+    }
+  }
+
+  // Manejar drag end con verificación robusta
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
 
@@ -159,6 +226,30 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           return
         }
         
+        // Verificar si hay una asignación existente
+        const key = `${fecha}-${usuarioId}`
+        const asignacionExistente = asignacionesRef.current.get(key)
+        
+        if (asignacionExistente) {
+          const confirmar = confirm(`Ya existe un turno ${asignacionExistente.tipoTurno?.codigo} en esta celda. ¿Reemplazar?`)
+          if (!confirmar) {
+            setActiveId(null)
+            setActiveDragData(null)
+            return
+          }
+          // Eliminar la asignación existente primero
+          if (asignacionExistente.id) {
+            await handleEliminarAsignacion(asignacionExistente.id, key)
+            // Pequeña pausa para que se complete la eliminación
+            await new Promise(resolve => setTimeout(resolve, 100))
+          } else {
+            toast.error('ID de asignación no válido')
+            setActiveId(null)
+            setActiveDragData(null)
+            return
+          }
+        }
+        
         setIsSaving(true)
         try {
           const result = await asignarTurno({
@@ -173,7 +264,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           
           if (result.success && result.data) {
             // Actualizar asignaciones localmente
-            const key = `${fecha}-${usuarioId}`
             setAsignaciones(prev => {
               const newMap = new Map(prev)
               newMap.set(key, {
@@ -190,6 +280,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               })
               return newMap
             })
+            setRenderVersion(v => v + 1)
             toast.success('Turno asignado correctamente')
           } else {
             toast.error(result.error || 'Error al asignar turno')
@@ -206,7 +297,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       if (activeData?.type === 'asignacion-existente') {
         const { asignacionId, usuarioIdOrigen, fechaOrigen, tipoTurnoId, codigo, nombre, color } = activeData
         
-        console.log('📦 Moviendo turno:', JSON.stringify({
+        console.log('📦 Intentando mover turno:', JSON.stringify({
           asignacionId,
           tipoTurnoId,
           codigo,
@@ -223,8 +314,20 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           return
         }
         
-        // Si es la misma celda, no hacer nada
+        // CRÍTICO: Verificar que la asignación AÚN existe en el Map
         const fechaOrigenStr = format(new Date(fechaOrigen), 'yyyy-MM-dd')
+        const keyOrigen = `${fechaOrigenStr}-${usuarioIdOrigen}`
+        const asignacionOriginal = asignacionesRef.current.get(keyOrigen)
+        
+        if (!asignacionOriginal || asignacionOriginal.id !== asignacionId) {
+          console.log('⚠️ Asignación ya no existe en Map o cambió, abortando movimiento')
+          toast.error('Esta asignación ya fue modificada o eliminada')
+          setActiveId(null)
+          setActiveDragData(null)
+          return
+        }
+        
+        // Si es la misma celda, no hacer nada
         if (usuarioIdOrigen === usuarioId && fechaOrigenStr === fecha) {
           console.log('⏭️ Misma celda, no mover')
           setActiveId(null)
@@ -232,108 +335,126 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           return
         }
         
-        // VALIDACIÓN: Verificar que la celda de destino esté vacía
+        // Verificar si hay una asignación en el destino
         const keyDestino = `${fecha}-${usuarioId}`
-        const asignacionEnDestino = asignacionesRef.current.get(keyDestino)
+        const asignacionDestino = asignacionesRef.current.get(keyDestino)
         
-        if (asignacionEnDestino) {
-          console.log('⚠️ Celda de destino ya tiene turno:', asignacionEnDestino.tipoTurno?.codigo)
-          toast.error(`La celda ya tiene asignado el turno ${asignacionEnDestino.tipoTurno?.codigo}. Elimínalo primero.`)
-          setActiveId(null)
-          setActiveDragData(null)
-          return
-        }
-        
-        setIsSaving(true)
-        try {
-          console.log(`🗑️ Paso 1: Eliminando asignación ${asignacionId}...`)
-          
-          // 1. Eliminar de posición original
-          const deleteResult = await eliminarAsignacion(asignacionId)
-          console.log('📥 Resultado eliminación:', JSON.stringify(deleteResult, null, 2))
-          
-          if (!deleteResult.success) {
-            console.error('❌ Falló eliminación:', deleteResult.error)
-            toast.error('Error al mover: no se pudo eliminar el turno original')
-            setIsSaving(false)
+        if (asignacionDestino) {
+          const confirmar = confirm(`Ya existe un turno ${asignacionDestino.tipoTurno?.codigo} en esta celda. ¿Reemplazar?`)
+          if (!confirmar) {
             setActiveId(null)
             setActiveDragData(null)
             return
           }
+          // Eliminar la asignación del destino primero
+          if (asignacionDestino.id) {
+            console.log('🗑️ Eliminando turno en destino antes de mover')
+            await handleEliminarAsignacion(asignacionDestino.id, keyDestino)
+            await new Promise(resolve => setTimeout(resolve, 100))
+          } else {
+            toast.error('ID de asignación en destino no válido')
+            setActiveId(null)
+            setActiveDragData(null)
+            return
+          }
+        }
+        
+        setIsSaving(true)
+        
+        try {
+          console.log('🔄 PASO 1: Actualizar Map local (optimistic update)')
           
-          console.log('✅ Eliminado exitosamente, creando en nueva posición...')
-          
-          // 2. Crear en nueva posición
-          const result = await asignarTurno({
-            publicacionId: params.id,
-            usuarioId,
-            tipoTurnoId,
-            fecha: new Date(fecha),
-            esNocturno: false,
-            esDiaInhabil: false,
-            esFestivo: false,
+          // IMPORTANTE: Actualizar el Map ANTES de hacer la llamada a la BD
+          setAsignaciones(prev => {
+            const newMap = new Map(prev)
+            // Remover del origen
+            newMap.delete(keyOrigen)
+            // Agregar temporalmente al destino con un ID temporal
+            newMap.set(keyDestino, {
+              ...asignacionOriginal,
+              id: 'temp-' + Date.now(), // ID temporal mientras se guarda
+              fecha: new Date(fecha),
+              usuarioId: usuarioId
+            })
+            console.log('✅ Map actualizado (optimistic)')
+            return newMap
           })
           
-          console.log('📥 Resultado creación:', JSON.stringify({
-            success: result.success,
-            id: result.data?.id,
-            tipoTurnoId: result.data?.tipoTurnoId,
-            codigo: result.data?.tipoTurno?.codigo
-          }, null, 2))
+          setRenderVersion(v => v + 1)
           
-          if (result.success && result.data) {
-            // Actualizar estado local
-            const keyOrigen = `${fechaOrigenStr}-${usuarioIdOrigen}`
-            const keyDestino = `${fecha}-${usuarioId}`
-            
-            console.log(`🔄 Actualizando Map: ${keyOrigen} -> ${keyDestino}`)
-            console.log('📦 Nueva asignación:', JSON.stringify({
-              id: result.data.id,
-              tipoTurnoId: result.data.tipoTurnoId,
-              codigo: result.data.tipoTurno?.codigo
-            }, null, 2))
-            
-            // Primero eliminar del Map origen para forzar unmount del componente viejo
+          console.log('🔄 PASO 2: Eliminar y crear en BD en paralelo')
+          
+          // Hacer las operaciones en la BD en paralelo
+          const [deleteResult, createResult] = await Promise.all([
+            eliminarAsignacion(asignacionId),
+            asignarTurno({
+              publicacionId: params.id,
+              usuarioId,
+              tipoTurnoId,
+              fecha: new Date(fecha),
+              esNocturno: false,
+              esDiaInhabil: false,
+              esFestivo: false,
+            })
+          ])
+          
+          console.log('📥 Resultados BD:', {
+            delete: deleteResult.success,
+            create: createResult.success
+          })
+          
+          if (!createResult.success) {
+            console.error('❌ Error al crear en BD, revirtiendo Map')
+            // Si falla la creación, revertir el Map
             setAsignaciones(prev => {
               const newMap = new Map(prev)
-              newMap.delete(keyOrigen)
-              console.log('🗑️ Eliminado del Map origen:', keyOrigen)
+              newMap.delete(keyDestino)
+              newMap.set(keyOrigen, asignacionOriginal)
               return newMap
             })
-            
-            // Pequeña pausa para que React desmonte el componente viejo
-            await new Promise(resolve => setTimeout(resolve, 50))
-            
-            // Luego agregar en destino
-            setAsignaciones(prev => {
-              const newMap = new Map(prev)
-              newMap.set(keyDestino, {
-                id: result.data!.id,
-                fecha: new Date(fecha),
-                tipoTurnoId: result.data!.tipoTurnoId,
-                usuarioId: usuarioId,
-                tipoTurno: {
-                  id: result.data!.tipoTurno?.id,
-                  codigo: result.data!.tipoTurno?.codigo || codigo,
-                  nombre: result.data!.tipoTurno?.nombre || nombre,
-                  color: result.data!.tipoTurno?.color || color
-                }
-              })
-              console.log('✅ Agregado al Map destino:', keyDestino)
-              return newMap
-            })
-            
-            // Incrementar version para forzar re-mount completo de todos los componentes
             setRenderVersion(v => v + 1)
-            console.log('🔄 Version incrementada para forzar re-mount')
-            
-            toast.success('Turno movido exitosamente')
-          } else {
-            console.error('❌ Error al crear en nueva posición:', result.error)
-            toast.error(result.error || 'Error al mover el turno')
+            toast.error(createResult.error || 'Error al mover el turno')
+            setActiveId(null)
+            setActiveDragData(null)
+            setIsSaving(false)
+            return
           }
+          
+          console.log('✅ PASO 3: Actualizar Map con ID real de BD')
+          
+          // Actualizar con el ID real de la BD
+          setAsignaciones(prev => {
+            const newMap = new Map(prev)
+            newMap.set(keyDestino, {
+              id: createResult.data!.id,
+              fecha: new Date(fecha),
+              tipoTurnoId: createResult.data!.tipoTurnoId,
+              usuarioId: usuarioId,
+              tipoTurno: {
+                id: createResult.data!.tipoTurno?.id,
+                codigo: createResult.data!.tipoTurno?.codigo || codigo,
+                nombre: createResult.data!.tipoTurno?.nombre || nombre,
+                color: createResult.data!.tipoTurno?.color || color
+              }
+            })
+            console.log('✅ Map actualizado con ID real:', createResult.data!.id)
+            return newMap
+          })
+          
+          setRenderVersion(v => v + 1)
+          
+          toast.success(`Turno ${codigo} movido exitosamente`)
+          
         } catch (error) {
-          console.error('💥 Error inesperado al mover turno:', error)
+          console.error('💥 Error inesperado al mover:', error)
+          // Revertir el Map en caso de error
+          setAsignaciones(prev => {
+            const newMap = new Map(prev)
+            newMap.delete(keyDestino)
+            newMap.set(keyOrigen, asignacionOriginal)
+            return newMap
+          })
+          setRenderVersion(v => v + 1)
           toast.error('Error inesperado al mover el turno')
         } finally {
           setIsSaving(false)
@@ -411,59 +532,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
   }
 
-  // Eliminar asignación por ID (busca en Map por ID, no por key)
-  async function handleDeleteByKey(asignacionId: string) {
-    console.log('🗑️ Eliminando asignación por ID:', asignacionId)
-    
-    // Buscar la key correcta en el Map usando el ID de la asignación
-    let keyToDelete: string | null = null
-    
-    // Convertir Map entries a array para iterar
-    const entries = Array.from(asignacionesRef.current.entries())
-    for (const [key, asignacion] of entries) {
-      if (asignacion.id === asignacionId) {
-        keyToDelete = key
-        console.log('✅ Encontrada en Map:', JSON.stringify({
-          key,
-          id: asignacion.id,
-          turno: asignacion.tipoTurno?.codigo
-        }, null, 2))
-        break
-      }
-    }
-    
-    if (!keyToDelete) {
-      console.error('❌ No se encontró asignación con ID:', asignacionId, 'en Map')
-      console.error('Keys disponibles en Map:', Array.from(asignacionesRef.current.keys()))
-      toast.error('Asignación no encontrada en el calendario')
-      return
-    }
-    
-    setIsSaving(true)
-    
-    try {
-      const result = await eliminarAsignacion(asignacionId)
-      console.log('📥 Resultado eliminar:', JSON.stringify(result, null, 2))
-      
-      if (result.success) {
-        setAsignaciones(prev => {
-          const newMap = new Map(prev)
-          newMap.delete(keyToDelete!)
-          console.log('✅ Eliminado del Map, key:', keyToDelete)
-          return newMap
-        })
-        toast.success('Turno eliminado correctamente')
-      } else {
-        console.error('❌ Error del servidor:', result.error)
-        toast.error(result.error || 'Error al eliminar turno')
-      }
-    } catch (error) {
-      console.error('💥 Error inesperado al eliminar turno:', error)
-      toast.error('Error inesperado al eliminar turno')
-    } finally {
-      setIsSaving(false)
-    }
-  }
 
   if (isLoading) {
     return (
@@ -802,7 +870,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                         }}
                                         onDelete={() => {
                                           if (asignacion.id) {
-                                            handleDeleteByKey(asignacion.id)
+                                            handleEliminarAsignacion(asignacion.id, key)
                                           } else {
                                             toast.error('ID de asignación no válido')
                                           }
