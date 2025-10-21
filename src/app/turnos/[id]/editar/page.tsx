@@ -168,7 +168,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               newMap.set(key, {
                 id: result.data?.id,
                 fecha: new Date(fecha),
+                tipoTurnoId: result.data?.tipoTurnoId, // ✅ CRÍTICO: Incluir tipoTurnoId
                 tipoTurno: {
+                  id: result.data?.tipoTurno?.id,
                   codigo: activeData.codigo,
                   nombre: activeData.nombre,
                   color: activeData.color
@@ -243,7 +245,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               newMap.set(keyDestino, {
                 id: result.data?.id,
                 fecha: new Date(fecha),
+                tipoTurnoId: result.data?.tipoTurnoId, // ✅ CRÍTICO: Incluir tipoTurnoId
                 tipoTurno: {
+                  id: result.data?.tipoTurno?.id,
                   codigo,
                   nombre,
                   color
