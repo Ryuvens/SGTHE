@@ -474,8 +474,20 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
   // Calcular métricas de HLM y validaciones DAN 11 por usuario
   function calcularMetricasUsuario(usuarioId: string) {
-    const turnosUsuario = Array.from(asignaciones.values())
-      .filter(a => a.usuarioId === usuarioId)
+    const todasLasAsignaciones = Array.from(asignaciones.values())
+    const turnosUsuario = todasLasAsignaciones.filter(a => a.usuarioId === usuarioId)
+    
+    // DEBUG: Logs para diagnosticar el problema de horas incorrectas
+    console.log(`🔍 MÉTRICAS - Usuario: ${usuarioId}`)
+    console.log(`  Total asignaciones en Map: ${todasLasAsignaciones.length}`)
+    console.log(`  Turnos filtrados para este usuario: ${turnosUsuario.length}`)
+    if (turnosUsuario.length > 0) {
+      console.log(`  Turnos:`, turnosUsuario.map(t => ({
+        codigo: t.tipoTurno?.codigo,
+        fecha: t.fecha,
+        usuarioId: t.usuarioId
+      })))
+    }
     
     // Horas por tipo de turno según documento oficial
     const HORAS_TURNO: Record<string, number> = {
@@ -502,6 +514,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       const horas = HORAS_TURNO[codigo] || 0
       const devolucion = DEVOLUCION_HORAS[codigo] || 0
       
+      console.log(`    Turno ${codigo}: ${horas}h trabajadas, ${devolucion}h devueltas`)
+      
       horasTrabajadas += horas
       horasDevueltas += devolucion
       
@@ -512,6 +526,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         horasSemanales[semana] += horas
       }
     })
+    
+    console.log(`  ✅ Total horas trabajadas: ${horasTrabajadas}h`)
+    console.log(`  ✅ Total horas devueltas: ${horasDevueltas}h`)
     
     // Validaciones DAN 11
     if (horasTrabajadas > 192) {
