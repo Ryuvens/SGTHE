@@ -16,7 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import { 
   DraggableTurnoType, 
-  DroppableCalendarCell 
+  DroppableCalendarCell,
+  DraggableAsignacion 
 } from '@/components/turnos/drag-drop-components'
 
 import { 
@@ -123,7 +124,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     if (overData?.type === 'calendar-cell') {
       const { fecha, usuarioId } = overData
       
-      // Si es un tipo de turno
+      // CASO 1: Asignar un nuevo tipo de turno desde el sidebar
       if (activeData?.type === 'turno') {
         setIsSaving(true)
         try {
@@ -160,6 +161,66 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         } catch (error) {
           console.error('Error:', error)
           toast.error('Error al asignar turno')
+        } finally {
+          setIsSaving(false)
+        }
+      }
+      
+      // CASO 2: Mover una asignación existente a otro día/usuario
+      if (activeData?.type === 'asignacion-existente') {
+        const { asignacionId, usuarioIdOrigen, fechaOrigen, tipoTurnoId, codigo, nombre, color } = activeData
+        
+        // Si es la misma celda, no hacer nada
+        const fechaOrigenStr = format(new Date(fechaOrigen), 'yyyy-MM-dd')
+        if (usuarioIdOrigen === usuarioId && fechaOrigenStr === fecha) {
+          setActiveId(null)
+          setActiveDragData(null)
+          return
+        }
+        
+        setIsSaving(true)
+        try {
+          // 1. Eliminar de posición original
+          await eliminarAsignacion(asignacionId)
+          
+          // 2. Crear en nueva posición
+          const result = await asignarTurno({
+            publicacionId: params.id,
+            usuarioId,
+            tipoTurnoId,
+            fecha: new Date(fecha),
+            esNocturno: false,
+            esDiaInhabil: false,
+            esFestivo: false,
+          })
+          
+          if (result.success) {
+            // Actualizar estado local
+            const keyOrigen = `${fechaOrigenStr}-${usuarioIdOrigen}`
+            const keyDestino = `${fecha}-${usuarioId}`
+            
+            setAsignaciones(prev => {
+              const newMap = new Map(prev)
+              newMap.delete(keyOrigen)
+              newMap.set(keyDestino, {
+                id: result.data?.id,
+                fecha: new Date(fecha),
+                tipoTurno: {
+                  codigo,
+                  nombre,
+                  color
+                }
+              })
+              return newMap
+            })
+            
+            toast.success('Turno movido exitosamente')
+          } else {
+            toast.error(result.error || 'Error al mover turno')
+          }
+        } catch (error) {
+          console.error('Error:', error)
+          toast.error('Error al mover turno')
         } finally {
           setIsSaving(false)
         }
@@ -298,7 +359,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               <CardHeader>
                 <CardTitle>Calendario de Asignación</CardTitle>
                 <CardDescription>
-                  Arrastra los tipos de turno a las celdas para asignar. Haz clic derecho en una celda asignada para eliminar.
+                  Arrastra tipos de turno desde el sidebar para asignar. Arrastra turnos asignados para moverlos. Haz clic en X para eliminar.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -364,17 +425,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                     isWeekend={esFinDeSemana}
                                   >
                                     {asignacion && (
-                                      <div 
-                                        className="rounded px-1.5 py-1.5 text-xs font-semibold text-center cursor-pointer hover:opacity-80 transition-opacity"
-                                        style={{ 
-                                          backgroundColor: asignacion.tipoTurno?.color || '#6B7280',
-                                          color: 'white'
+                                      <DraggableAsignacion
+                                        asignacion={{
+                                          ...asignacion,
+                                          usuarioId: usuario.id,
+                                          fecha: fecha
                                         }}
-                                        onClick={() => handleRemoveAsignacion(key, asignacion.id)}
-                                        title={`${asignacion.tipoTurno?.nombre || asignacion.tipoTurno?.codigo}\nClick para eliminar`}
-                                      >
-                                        {asignacion.tipoTurno?.codigo}
-                                      </div>
+                                        onDelete={() => handleRemoveAsignacion(key, asignacion.id)}
+                                      />
                                     )}
                                   </DroppableCalendarCell>
                                 </td>

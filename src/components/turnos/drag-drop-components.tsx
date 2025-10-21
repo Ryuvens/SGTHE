@@ -109,6 +109,67 @@ export function DraggableTurnoType({
   )
 }
 
+// Componente para asignación existente draggable
+export function DraggableAsignacion({
+  asignacion,
+  onDelete
+}: {
+  asignacion: any
+  onDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `asignacion-${asignacion.id}`,
+    data: {
+      type: 'asignacion-existente',
+      asignacionId: asignacion.id,
+      tipoTurnoId: asignacion.tipoTurno?.id,
+      codigo: asignacion.tipoTurno?.codigo,
+      color: asignacion.tipoTurno?.color,
+      nombre: asignacion.tipoTurno?.nombre,
+      usuarioIdOrigen: asignacion.usuarioId,
+      fechaOrigen: asignacion.fecha
+    }
+  })
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group">
+      {/* Botón eliminar en la esquina */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          if (confirm('¿Eliminar este turno?')) {
+            onDelete()
+          }
+        }}
+        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center"
+        title="Eliminar turno"
+        type="button"
+      >
+        ×
+      </button>
+      
+      {/* Turno draggable */}
+      <div
+        {...listeners}
+        {...attributes}
+        className="rounded px-1.5 py-1.5 text-xs font-semibold text-center cursor-move hover:ring-2 hover:ring-offset-1 hover:ring-white transition-all"
+        style={{ 
+          backgroundColor: asignacion.tipoTurno?.color || '#6B7280',
+          color: 'white'
+        }}
+        title={`${asignacion.tipoTurno?.nombre || asignacion.tipoTurno?.codigo}\nArrastra para mover • Click X para eliminar`}
+      >
+        {asignacion.tipoTurno?.codigo}
+      </div>
+    </div>
+  )
+}
+
 // Celda droppable del calendario
 export function DroppableCalendarCell({ 
   id,
