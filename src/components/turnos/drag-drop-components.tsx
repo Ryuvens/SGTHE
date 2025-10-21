@@ -117,17 +117,31 @@ export function DraggableAsignacion({
   asignacion: any
   onDelete: () => void
 }) {
+  // IMPORTANTE: Verificar que tenemos todos los datos necesarios
+  const tipoTurnoId = asignacion.tipoTurnoId || asignacion.tipoTurno?.id
+  
+  if (!tipoTurnoId || !asignacion.tipoTurno) {
+    console.error('Asignación sin tipoTurnoId:', asignacion)
+    return (
+      <div className="rounded px-1.5 py-1.5 text-xs font-semibold text-center bg-red-500 text-white">
+        Error
+      </div>
+    )
+  }
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `asignacion-${asignacion.id}`,
     data: {
       type: 'asignacion-existente',
       asignacionId: asignacion.id,
-      tipoTurnoId: asignacion.tipoTurno?.id,
-      codigo: asignacion.tipoTurno?.codigo,
-      color: asignacion.tipoTurno?.color,
-      nombre: asignacion.tipoTurno?.nombre,
+      tipoTurnoId: tipoTurnoId, // CRÍTICO: Usar tipoTurnoId validado
+      codigo: asignacion.tipoTurno.codigo,
+      color: asignacion.tipoTurno.color,
+      nombre: asignacion.tipoTurno.nombre,
       usuarioIdOrigen: asignacion.usuarioId,
-      fechaOrigen: asignacion.fecha
+      fechaOrigen: typeof asignacion.fecha === 'string' 
+        ? asignacion.fecha 
+        : asignacion.fecha.toISOString().split('T')[0]
     }
   })
 
@@ -142,11 +156,12 @@ export function DraggableAsignacion({
       <button
         onClick={(e) => {
           e.stopPropagation()
-          if (confirm('¿Eliminar este turno?')) {
+          e.preventDefault()
+          if (confirm(`¿Eliminar turno ${asignacion.tipoTurno?.codigo}?`)) {
             onDelete()
           }
         }}
-        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center"
+        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] leading-none opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center hover:bg-red-600"
         title="Eliminar turno"
         type="button"
       >
@@ -157,12 +172,12 @@ export function DraggableAsignacion({
       <div
         {...listeners}
         {...attributes}
-        className="rounded px-1.5 py-1.5 text-xs font-semibold text-center cursor-move hover:ring-2 hover:ring-offset-1 hover:ring-white transition-all"
+        className="rounded px-1.5 py-1.5 text-xs font-semibold text-center cursor-move hover:ring-2 hover:ring-primary hover:ring-offset-1 transition-all"
         style={{ 
           backgroundColor: asignacion.tipoTurno?.color || '#6B7280',
           color: 'white'
         }}
-        title={`${asignacion.tipoTurno?.nombre || asignacion.tipoTurno?.codigo}\nArrastra para mover • Click X para eliminar`}
+        title={`${asignacion.tipoTurno?.nombre} - Arrastra para mover`}
       >
         {asignacion.tipoTurno?.codigo}
       </div>

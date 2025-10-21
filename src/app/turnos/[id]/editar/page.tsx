@@ -19,6 +19,7 @@ import {
   DroppableCalendarCell,
   DraggableAsignacion 
 } from '@/components/turnos/drag-drop-components'
+import { OpcionesAvanzadas } from '@/components/turnos/opciones-avanzadas'
 
 import { 
   getPublicacion, 
@@ -32,7 +33,9 @@ import { cn } from '@/lib/utils'
 interface Asignacion {
   id?: string
   fecha: Date
+  tipoTurnoId?: string
   tipoTurno?: {
+    id?: string
     codigo: string
     nombre?: string
     color?: string
@@ -84,7 +87,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         asigMap.set(key, {
           id: asig.id,
           fecha: new Date(asig.fecha),
+          tipoTurnoId: asig.tipoTurnoId || asig.tipoTurno?.id, // CRÍTICO: Incluir tipoTurnoId
           tipoTurno: {
+            id: asig.tipoTurno?.id,
             codigo: asig.tipoTurno?.codigo || '',
             nombre: asig.tipoTurno?.nombre,
             color: asig.tipoTurno?.color
@@ -344,6 +349,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           </div>
           
           <div className="flex items-center gap-2">
+            <OpcionesAvanzadas publicacionId={params.id} />
             <Badge variant={publicacion.estado === 'PUBLICADO' ? 'default' : 'secondary'}>
               {publicacion.estado}
             </Badge>
@@ -465,10 +471,36 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                       <DraggableAsignacion
                                         asignacion={{
                                           ...asignacion,
+                                          tipoTurnoId: asignacion.tipoTurnoId || asignacion.tipoTurno?.id,
                                           usuarioId: usuario.id,
                                           fecha: fecha
                                         }}
-                                        onDelete={() => handleRemoveAsignacion(key, asignacion.id)}
+                                        onDelete={async () => {
+                                          if (!asignacion.id) {
+                                            toast.error('ID de asignación no válido')
+                                            return
+                                          }
+                                          
+                                          setIsSaving(true)
+                                          try {
+                                            const result = await eliminarAsignacion(asignacion.id)
+                                            if (result.success) {
+                                              setAsignaciones(prev => {
+                                                const newMap = new Map(prev)
+                                                newMap.delete(key)
+                                                return newMap
+                                              })
+                                              toast.success('Turno eliminado correctamente')
+                                            } else {
+                                              toast.error(result.error || 'Error al eliminar turno')
+                                            }
+                                          } catch (error) {
+                                            console.error('Error al eliminar turno:', error)
+                                            toast.error('Error inesperado al eliminar turno')
+                                          } finally {
+                                            setIsSaving(false)
+                                          }
+                                        }}
                                       />
                                     )}
                                   </DroppableCalendarCell>
