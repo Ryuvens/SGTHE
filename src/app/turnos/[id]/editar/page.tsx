@@ -315,40 +315,45 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setActiveDragData(null)
   }
 
-  // Eliminar asignación por key (usa ref para obtener ID actualizado)
-  async function handleDeleteByKey(key: string) {
-    // Usar ref para obtener el Map actual (no del closure)
-    const asignacionActual = asignacionesRef.current.get(key)
+  // Eliminar asignación por ID (busca en Map por ID, no por key)
+  async function handleDeleteByKey(asignacionId: string) {
+    console.log('🗑️ Eliminando asignación por ID:', asignacionId)
     
-    if (!asignacionActual?.id) {
-      console.error('❌ No se encontró asignación en Map para key:', key, 'Map keys:', Array.from(asignacionesRef.current.keys()))
-      toast.error('ID de asignación no válido')
-      return
+    // Buscar la key correcta en el Map usando el ID de la asignación
+    let keyToDelete: string | null = null
+    
+    // Convertir Map entries a array para iterar
+    const entries = Array.from(asignacionesRef.current.entries())
+    for (const [key, asignacion] of entries) {
+      if (asignacion.id === asignacionId) {
+        keyToDelete = key
+        console.log('✅ Encontrada en Map:', JSON.stringify({
+          key,
+          id: asignacion.id,
+          turno: asignacion.tipoTurno?.codigo
+        }, null, 2))
+        break
+      }
     }
     
-    console.log('🗑️ Eliminando asignación (por key):', JSON.stringify({
-      key,
-      id: asignacionActual.id,
-      turno: asignacionActual.tipoTurno?.codigo,
-      fecha: asignacionActual.fecha
-    }, null, 2))
+    if (!keyToDelete) {
+      console.error('❌ No se encontró asignación con ID:', asignacionId, 'en Map')
+      console.error('Keys disponibles en Map:', Array.from(asignacionesRef.current.keys()))
+      toast.error('Asignación no encontrada en el calendario')
+      return
+    }
     
     setIsSaving(true)
     
     try {
-      const result = await eliminarAsignacion(asignacionActual.id)
+      const result = await eliminarAsignacion(asignacionId)
       console.log('📥 Resultado eliminar:', JSON.stringify(result, null, 2))
       
       if (result.success) {
         setAsignaciones(prev => {
           const newMap = new Map(prev)
-          const asigAntes = newMap.get(key)
-          console.log('🔍 Asignación en Map antes de eliminar:', JSON.stringify({
-            id: asigAntes?.id,
-            codigo: asigAntes?.tipoTurno?.codigo
-          }, null, 2))
-          newMap.delete(key)
-          console.log('✅ Eliminado del Map, key:', key)
+          newMap.delete(keyToDelete!)
+          console.log('✅ Eliminado del Map, key:', keyToDelete)
           return newMap
         })
         toast.success('Turno eliminado correctamente')
@@ -548,7 +553,13 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                             color: asignacion.tipoTurno?.color
                                           }
                                         }}
-                                        onDelete={() => handleDeleteByKey(key)}
+                                        onDelete={() => {
+                                          if (asignacion.id) {
+                                            handleDeleteByKey(asignacion.id)
+                                          } else {
+                                            toast.error('ID de asignación no válido')
+                                          }
+                                        }}
                                       />
                                     )}
                                   </DroppableCalendarCell>
