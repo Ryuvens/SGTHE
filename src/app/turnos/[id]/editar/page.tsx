@@ -229,6 +229,18 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           return
         }
         
+        // VALIDACIÓN: Verificar que la celda de destino esté vacía
+        const keyDestino = `${fecha}-${usuarioId}`
+        const asignacionEnDestino = asignacionesRef.current.get(keyDestino)
+        
+        if (asignacionEnDestino) {
+          console.log('⚠️ Celda de destino ya tiene turno:', asignacionEnDestino.tipoTurno?.codigo)
+          toast.error(`La celda ya tiene asignado el turno ${asignacionEnDestino.tipoTurno?.codigo}. Elimínalo primero.`)
+          setActiveId(null)
+          setActiveDragData(null)
+          return
+        }
+        
         setIsSaving(true)
         try {
           console.log(`🗑️ Paso 1: Eliminando asignación ${asignacionId}...`)
@@ -298,10 +310,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             })
             
             toast.success('Turno movido exitosamente')
-            
-            // Recargar datos del servidor para sincronizar todo
-            console.log('🔄 Recargando datos del servidor...')
-            setTimeout(() => loadData(), 100)
           } else {
             console.error('❌ Error al crear en nueva posición:', result.error)
             toast.error(result.error || 'Error al mover el turno')
