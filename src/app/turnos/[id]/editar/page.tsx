@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { format, eachDayOfInterval, getDay, startOfMonth, endOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X } from 'lucide-react'
+import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X, Copy, Clipboard, Check } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,14 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 import { 
   DraggableTurnoType, 
@@ -57,6 +65,16 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const [activeDragData, setActiveDragData] = useState<any>(null)
   const [renderVersion, setRenderVersion] = useState(0)
   const [mostrarMetricas, setMostrarMetricas] = useState(true)
+  
+  // Estados para copiar/pegar secuencias
+  const [selectedCells, setSelectedCells] = useState<string[]>([]) // Keys de celdas seleccionadas
+  const [lastSelectedCell, setLastSelectedCell] = useState<string | null>(null)
+  const [copiedSequence, setCopiedSequence] = useState<Asignacion[]>([])
+  const [pastePreview, setPastePreview] = useState<{
+    destino: string
+    turnos: Asignacion[]
+    errors: string[]
+  } | null>(null)
 
   // Sincronizar ref con estado
   useEffect(() => {
@@ -472,6 +490,183 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setActiveDragData(null)
   }
 
+  // ============================================
+  // FUNCIONES DE COPIAR/PEGAR SECUENCIAS
+  // ============================================
+  
+  // Manejar selección de celdas con Shift+Click
+  function handleCellClick(key: string, fecha: string, usuarioId: string, event: React.MouseEvent) {
+    // Si hay Shift presionado, seleccionar rango
+    if (event.shiftKey && lastSelectedCell) {
+      const lastParts = lastSelectedCell.split('-')
+      const currentParts = key.split('-')
+      
+      // Solo permitir selección en la misma fila (mismo usuario)
+      if (lastParts[lastParts.length - 1] === currentParts[currentParts.length - 1]) {
+        // Calcular rango de fechas
+        const fechaInicio = lastParts.slice(0, 3).join('-')
+        const fechaFin = currentParts.slice(0, 3).join('-')
+        
+        // Obtener todos los días entre las fechas
+        const dias = eachDayOfInterval({
+          start: new Date(fechaInicio),
+          end: new Date(fechaFin)
+        })
+        
+        // Crear keys para cada día
+        const newSelection = dias.map(dia => `${format(dia, 'yyyy-MM-dd')}-${usuarioId}`)
+        setSelectedCells(newSelection)
+      }
+    } else {
+      // Selección simple (toggle)
+      if (selectedCells.includes(key)) {
+        setSelectedCells(selectedCells.filter(k => k !== key))
+        setLastSelectedCell(null)
+      } else {
+        setSelectedCells([key])
+        setLastSelectedCell(key)
+      }
+    }
+  }
+  
+  // Copiar secuencia seleccionada
+  function handleCopySequence() {
+    if (selectedCells.length === 0) {
+      toast.error('No hay celdas seleccionadas')
+      return
+    }
+    
+    // Obtener turnos de las celdas seleccionadas
+    const sequence: Asignacion[] = []
+    selectedCells.forEach(key => {
+      const asignacion = asignaciones.get(key)
+      if (asignacion) {
+        sequence.push(asignacion)
+      }
+    })
+    
+    if (sequence.length === 0) {
+      toast.error('Las celdas seleccionadas no tienen turnos')
+      return
+    }
+    
+    setCopiedSequence(sequence)
+    toast.success(`${sequence.length} turnos copiados: ${sequence.map(t => t.tipoTurno?.codigo).join('-')}`)
+  }
+  
+  // Validar pegado de secuencia
+  function validatePaste(
+    sequence: Asignacion[],
+    targetFecha: string,
+    targetUsuarioId: string
+  ): { valid: boolean; errors: string[] } {
+    const errors: string[] = []
+    
+    sequence.forEach((turno, index) => {
+      // Calcular fecha de destino para este turno
+      const fechaBase = new Date(targetFecha)
+      fechaBase.setDate(fechaBase.getDate() + index)
+      const dayOfWeek = fechaBase.getDay()
+      const fechaDestino = format(fechaBase, 'yyyy-MM-dd')
+      
+      // Validación 1: Turnos de viernes solo en viernes
+      const codigo = turno.tipoTurno?.codigo || ''
+      if (codigo === 'AV' && dayOfWeek !== 5) {
+        errors.push(`Turno ${codigo} solo puede ir en viernes`)
+      }
+      
+      // Validación 2: Verificar si la celda destino ya está ocupada
+      const keyDestino = `${fechaDestino}-${targetUsuarioId}`
+      const asignacionExistente = asignaciones.get(keyDestino)
+      if (asignacionExistente) {
+        errors.push(`Celda ${fechaDestino} ya tiene turno ${asignacionExistente.tipoTurno?.codigo}`)
+      }
+    })
+    
+    return { valid: errors.length === 0, errors }
+  }
+  
+  // Mostrar vista previa de pegado
+  function handlePastePreview(targetKey: string) {
+    if (copiedSequence.length === 0) {
+      toast.error('No hay secuencia copiada')
+      return
+    }
+    
+    const [targetFecha, targetUsuarioId] = targetKey.split('-').slice(-4).join('-').split('-')
+    const fechaCompleta = targetKey.split('-').slice(0, 3).join('-')
+    
+    // Validar el pegado
+    const validation = validatePaste(copiedSequence, fechaCompleta, targetKey.split('-').pop()!)
+    
+    setPastePreview({
+      destino: targetKey,
+      turnos: copiedSequence,
+      errors: validation.errors
+    })
+  }
+  
+  // Ejecutar pegado de secuencia
+  async function handleConfirmPaste() {
+    if (!pastePreview) return
+    
+    const [targetFecha, ...rest] = pastePreview.destino.split('-')
+    const targetUsuarioId = rest[rest.length - 1]
+    const fechaCompleta = pastePreview.destino.split('-').slice(0, 3).join('-')
+    
+    setIsSaving(true)
+    
+    try {
+      // Asignar cada turno de la secuencia
+      for (let i = 0; i < pastePreview.turnos.length; i++) {
+        const turno = pastePreview.turnos[i]
+        const fechaBase = new Date(fechaCompleta)
+        fechaBase.setDate(fechaBase.getDate() + i)
+        const nuevaFecha = format(fechaBase, 'yyyy-MM-dd')
+        
+        // Verificar si existe el tipo de turno
+        if (!turno.tipoTurnoId) continue
+        
+        const result = await asignarTurno({
+          publicacionId: params.id,
+          usuarioId: targetUsuarioId,
+          tipoTurnoId: turno.tipoTurnoId,
+          fecha: new Date(nuevaFecha),
+          esNocturno: false,
+          esDiaInhabil: false,
+          esFestivo: false,
+        })
+        
+        if (result.success && result.data) {
+          // Actualizar Map local
+          const key = `${nuevaFecha}-${targetUsuarioId}`
+          setAsignaciones(prev => {
+            const newMap = new Map(prev)
+            newMap.set(key, {
+              id: result.data!.id,
+              fecha: new Date(nuevaFecha),
+              usuarioId: targetUsuarioId,
+              tipoTurnoId: result.data!.tipoTurnoId,
+              tipoTurno: turno.tipoTurno
+            })
+            return newMap
+          })
+        }
+      }
+      
+      setRenderVersion(v => v + 1)
+      toast.success(`Secuencia pegada: ${pastePreview.turnos.length} turnos`)
+      setPastePreview(null)
+      setSelectedCells([])
+      
+    } catch (error) {
+      console.error('Error al pegar secuencia:', error)
+      toast.error('Error al pegar la secuencia')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   // Calcular métricas de HLM y validaciones DAN 11 por usuario
   function calcularMetricasUsuario(usuarioId: string) {
     const todasLasAsignaciones = Array.from(asignaciones.values())
@@ -615,6 +810,38 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               <TrendingUp className="mr-2 h-4 w-4" />
               {mostrarMetricas ? 'Ocultar' : 'Ver'} Métricas
             </Button>
+            
+            {/* Botones de Copiar/Pegar */}
+            {selectedCells.length > 0 && (
+              <>
+                <Badge variant="secondary">
+                  {selectedCells.length} celda{selectedCells.length > 1 ? 's' : ''} seleccionada{selectedCells.length > 1 ? 's' : ''}
+                </Badge>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCopySequence}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setSelectedCells([])}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            
+            {copiedSequence.length > 0 && (
+              <Badge variant="default" className="bg-green-600">
+                <Clipboard className="mr-1 h-3 w-3" />
+                {copiedSequence.length} turno{copiedSequence.length > 1 ? 's' : ''} copiado{copiedSequence.length > 1 ? 's' : ''}
+              </Badge>
+            )}
+            
             <OpcionesAvanzadas publicacionId={params.id} />
             <Badge variant={publicacion.estado === 'PUBLICADO' ? 'default' : 'secondary'}>
               {publicacion.estado}
@@ -872,39 +1099,66 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               const asignacion = asignaciones.get(key)
                               const esFinDeSemana = getDay(dia) === 0 || getDay(dia) === 6
                               
+                              const isSelected = selectedCells.includes(key)
+                              const canPaste = copiedSequence.length > 0 && !asignacion
+                              
                               return (
                                 <td key={dia.toISOString()} className="p-0">
-                                  <DroppableCalendarCell
-                                    id={key}
-                                    fecha={fecha}
-                                    usuarioId={usuario.id}
-                                    isWeekend={esFinDeSemana}
-                                  >
-                                    {asignacion && (
-                                      <DraggableAsignacion
-                                        key={`${asignacion.id}-v${renderVersion}`}
-                                        asignacion={{
-                                          id: asignacion.id,
-                                          fecha: fecha, // Usar fecha del loop (ya en formato 'yyyy-MM-dd')
-                                          usuarioId: usuario.id,
-                                          tipoTurnoId: asignacion.tipoTurnoId || asignacion.tipoTurno?.id,
-                                          tipoTurno: {
-                                            id: asignacion.tipoTurno?.id,
-                                            codigo: asignacion.tipoTurno?.codigo || '',
-                                            nombre: asignacion.tipoTurno?.nombre,
-                                            color: asignacion.tipoTurno?.color
-                                          }
-                                        }}
-                                        onDelete={() => {
-                                          if (asignacion.id) {
-                                            handleEliminarAsignacion(asignacion.id, key)
-                                          } else {
-                                            toast.error('ID de asignación no válido')
-                                          }
-                                        }}
-                                      />
+                                  <div
+                                    onClick={(e) => {
+                                      // Si hay secuencia copiada y la celda está vacía, mostrar preview
+                                      if (canPaste) {
+                                        handlePastePreview(key)
+                                      } else {
+                                        // Si no, manejar selección
+                                        handleCellClick(key, fecha, usuario.id, e)
+                                      }
+                                    }}
+                                    className={cn(
+                                      "relative",
+                                      isSelected && "ring-2 ring-blue-500 ring-inset z-10",
+                                      canPaste && "cursor-pointer hover:bg-green-50 dark:hover:bg-green-950/20"
                                     )}
-                                  </DroppableCalendarCell>
+                                  >
+                                    <DroppableCalendarCell
+                                      id={key}
+                                      fecha={fecha}
+                                      usuarioId={usuario.id}
+                                      isWeekend={esFinDeSemana}
+                                    >
+                                      {asignacion && (
+                                        <DraggableAsignacion
+                                          key={`${asignacion.id}-v${renderVersion}`}
+                                          asignacion={{
+                                            id: asignacion.id,
+                                            fecha: fecha, // Usar fecha del loop (ya en formato 'yyyy-MM-dd')
+                                            usuarioId: usuario.id,
+                                            tipoTurnoId: asignacion.tipoTurnoId || asignacion.tipoTurno?.id,
+                                            tipoTurno: {
+                                              id: asignacion.tipoTurno?.id,
+                                              codigo: asignacion.tipoTurno?.codigo || '',
+                                              nombre: asignacion.tipoTurno?.nombre,
+                                              color: asignacion.tipoTurno?.color
+                                            }
+                                          }}
+                                          onDelete={() => {
+                                            if (asignacion.id) {
+                                              handleEliminarAsignacion(asignacion.id, key)
+                                            } else {
+                                              toast.error('ID de asignación no válido')
+                                            }
+                                          }}
+                                        />
+                                      )}
+                                      
+                                      {/* Indicador de paste disponible */}
+                                      {canPaste && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                          <Clipboard className="h-3 w-3 text-green-600" />
+                                        </div>
+                                      )}
+                                    </DroppableCalendarCell>
+                                  </div>
                                 </td>
                               )
                             })}
@@ -919,6 +1173,97 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           </div>
         </div>
       </div>
+
+      {/* Modal de vista previa para pegar */}
+      <Dialog open={!!pastePreview} onOpenChange={() => setPastePreview(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Vista Previa - Pegar Secuencia</DialogTitle>
+            <DialogDescription>
+              Revisa los turnos que se pegarán antes de confirmar
+            </DialogDescription>
+          </DialogHeader>
+          
+          {pastePreview && (
+            <div className="space-y-4">
+              {/* Información de la secuencia */}
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  {pastePreview.turnos.length} turno{pastePreview.turnos.length > 1 ? 's' : ''}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Secuencia: {pastePreview.turnos.map(t => t.tipoTurno?.codigo).join(' → ')}
+                </span>
+              </div>
+              
+              {/* Tabla de preview */}
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="text-left p-2">Día</th>
+                      <th className="text-center p-2">Turno</th>
+                      <th className="text-left p-2">Horario</th>
+                      <th className="text-center p-2">Horas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pastePreview.turnos.map((turno, index) => {
+                      const fechaBase = new Date(pastePreview.destino.split('-').slice(0, 3).join('-'))
+                      fechaBase.setDate(fechaBase.getDate() + index)
+                      const fecha = format(fechaBase, 'yyyy-MM-dd')
+                      
+                      return (
+                        <tr key={index} className="border-t">
+                          <td className="p-2">
+                            {format(fechaBase, "EEE d 'de' MMMM", { locale: es })}
+                          </td>
+                          <td className="text-center p-2">
+                            <Badge style={{ backgroundColor: turno.tipoTurno?.color }}>
+                              {turno.tipoTurno?.codigo}
+                            </Badge>
+                          </td>
+                          <td className="p-2 text-muted-foreground text-xs">
+                            {turno.tipoTurno?.nombre || '-'}
+                          </td>
+                          <td className="text-center p-2">
+                            {/* Mostrar horas del turno */}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Errores de validación */}
+              {pastePreview.errors.length > 0 && (
+                <div className="bg-destructive/10 border border-destructive rounded-lg p-3">
+                  <h4 className="font-semibold text-destructive mb-2">⚠️ Errores de Validación:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    {pastePreview.errors.map((error, i) => (
+                      <li key={i} className="text-destructive">{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPastePreview(null)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleConfirmPaste}
+              disabled={pastePreview?.errors && pastePreview.errors.length > 0}
+            >
+              <Check className="mr-2 h-4 w-4" />
+              Confirmar Pegado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Drag overlay */}
       <DragOverlay>
