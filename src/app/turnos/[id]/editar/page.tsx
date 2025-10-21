@@ -504,29 +504,40 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                   >
                                     {asignacion && (
                                       <DraggableAsignacion
+                                        key={asignacion.id}
                                         asignacion={{
-                                          ...asignacion,
-                                          tipoTurnoId: asignacion.tipoTurnoId || asignacion.tipoTurno?.id,
+                                          id: asignacion.id,
+                                          fecha: fecha,
                                           usuarioId: usuario.id,
-                                          fecha: fecha
+                                          tipoTurnoId: asignacion.tipoTurnoId || asignacion.tipoTurno?.id,
+                                          tipoTurno: {
+                                            id: asignacion.tipoTurno?.id,
+                                            codigo: asignacion.tipoTurno?.codigo || '',
+                                            nombre: asignacion.tipoTurno?.nombre,
+                                            color: asignacion.tipoTurno?.color
+                                          }
                                         }}
                                         onDelete={async () => {
-                                          if (!asignacion.id) {
-                                            console.error('❌ ID faltante en asignacion:', asignacion)
+                                          // IMPORTANTE: Obtener el ID actual del Map en tiempo de ejecución
+                                          const asignacionActual = asignaciones.get(key)
+                                          
+                                          if (!asignacionActual?.id) {
+                                            console.error('❌ ID faltante en asignacion actual:', asignacionActual)
                                             toast.error('ID de asignación no válido')
                                             return
                                           }
                                           
                                           console.log('🗑️ Eliminando asignación:', {
-                                            id: asignacion.id,
-                                            turno: asignacion.tipoTurno?.codigo,
+                                            id: asignacionActual.id,
+                                            turno: asignacionActual.tipoTurno?.codigo,
                                             fecha,
-                                            usuario: usuario.nombre
+                                            usuario: usuario.nombre,
+                                            key
                                           })
                                           
                                           setIsSaving(true)
                                           try {
-                                            const result = await eliminarAsignacion(asignacion.id)
+                                            const result = await eliminarAsignacion(asignacionActual.id)
                                             console.log('📥 Resultado eliminar:', result)
                                             
                                             if (result.success) {
