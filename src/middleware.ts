@@ -1,56 +1,56 @@
 // src/middleware.ts
-// Middleware optimizado para Edge Runtime (< 1 MB)
+// Middleware ultra-ligero optimizado para Edge Runtime (< 30 kB)
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Obtener el token de la cookie de NextAuth
-  const token = request.cookies.get('next-auth.session-token') || 
-                request.cookies.get('__Secure-next-auth.session-token')
-  
-  const isLoggedIn = !!token
-
-  // Rutas públicas que no requieren autenticación
+  // Lista de rutas públicas que NO requieren autenticación
   const publicPaths = [
-    '/login',
-    '/register',
-    '/verify-email',
-    '/forgot-password',
-    '/kiosco', // Kiosco es público
+    '/',           // Home (maneja su propio redirect)
+    '/login',      // Página de login
+    '/kiosco',     // Kiosco es público
+    '/api/auth',   // NextAuth API routes
   ]
-
+  
   // Verificar si la ruta actual es pública
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path))
-
-  // Si está en ruta pública y está logueado → dashboard
-  if (isPublicPath && isLoggedIn && pathname !== '/kiosco') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  
+  // Si es ruta pública, permitir acceso sin verificar sesión
+  if (isPublicPath) {
+    return NextResponse.next()
   }
-
-  // Si NO está en ruta pública y NO está logueado → login
-  // (todas las demás rutas requieren autenticación excepto las explícitamente públicas)
-  if (!isPublicPath && !isLoggedIn && pathname !== '/' && !pathname.startsWith('/kiosco')) {
+  
+  // Para rutas protegidas, verificar sesión via cookies de NextAuth
+  // En producción (HTTPS): __Secure-next-auth.session-token
+  // En desarrollo (HTTP): next-auth.session-token
+  const sessionToken = 
+    request.cookies.get('__Secure-next-auth.session-token')?.value ||
+    request.cookies.get('next-auth.session-token')?.value
+  
+  const isAuthenticated = !!sessionToken
+  
+  // Si no está autenticado, redirigir a login
+  if (!isAuthenticated) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
-
+  
+  // Si está autenticado, permitir acceso
   return NextResponse.next()
 }
 
-// Configuración optimizada del matcher
+// Matcher ultra-específico: solo rutas protegidas
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - api routes (except api/auth)
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico, robots.txt, sitemap.xml
-     * - public files (images, fonts, etc.)
-     */
-    '/((?!api(?!/auth)|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)$).*)',
+    '/dashboard/:path*',
+    '/turnos/:path*',
+    '/horas-extras/:path*',
+    '/usuarios/:path*',
+    '/reportes/:path*',
+    '/configuracion/:path*',
   ],
 }
+
