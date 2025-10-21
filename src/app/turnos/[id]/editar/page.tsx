@@ -304,29 +304,50 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setActiveDragData(null)
   }
 
-  // Eliminar asignación
-  async function handleRemoveAsignacion(key: string, asignacionId?: string) {
+  // Eliminar asignación por key (obtiene ID actual del Map en tiempo real)
+  async function handleDeleteByKey(key: string) {
+    // Obtener ID actual usando callback de setState para acceder al estado más reciente
+    let asignacionId: string | undefined
+    
+    setAsignaciones(prev => {
+      const asignacionActual = prev.get(key)
+      asignacionId = asignacionActual?.id
+      return prev // No modificar el estado aún
+    })
+    
     if (!asignacionId) {
+      console.error('❌ No se encontró asignación en Map para key:', key)
       toast.error('ID de asignación no válido')
       return
     }
-
+    
+    console.log('🗑️ Eliminando asignación (por key):', {
+      key,
+      id: asignacionId
+    })
+    
     setIsSaving(true)
+    
     try {
       const result = await eliminarAsignacion(asignacionId)
+      console.log('📥 Resultado eliminar:', result)
       
       if (result.success) {
         setAsignaciones(prev => {
           const newMap = new Map(prev)
+          const asig = newMap.get(key)
+          console.log('🔍 Asignación antes de eliminar:', { id: asig?.id, codigo: asig?.tipoTurno?.codigo })
           newMap.delete(key)
+          console.log('✅ Eliminado del Map:', key)
           return newMap
         })
         toast.success('Turno eliminado correctamente')
       } else {
+        console.error('❌ Error del servidor:', result.error)
         toast.error(result.error || 'Error al eliminar turno')
       }
     } catch (error) {
-      console.error('Error al eliminar turno:', error)
+      console.error('💥 Error inesperado al eliminar turno:', error)
       toast.error('Error inesperado al eliminar turno')
     } finally {
       setIsSaving(false)
@@ -517,48 +538,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                             color: asignacion.tipoTurno?.color
                                           }
                                         }}
-                                        onDelete={async () => {
-                                          // IMPORTANTE: Obtener el ID actual del Map en tiempo de ejecución
-                                          const asignacionActual = asignaciones.get(key)
-                                          
-                                          if (!asignacionActual?.id) {
-                                            console.error('❌ ID faltante en asignacion actual:', asignacionActual)
-                                            toast.error('ID de asignación no válido')
-                                            return
-                                          }
-                                          
-                                          console.log('🗑️ Eliminando asignación:', {
-                                            id: asignacionActual.id,
-                                            turno: asignacionActual.tipoTurno?.codigo,
-                                            fecha,
-                                            usuario: usuario.nombre,
-                                            key
-                                          })
-                                          
-                                          setIsSaving(true)
-                                          try {
-                                            const result = await eliminarAsignacion(asignacionActual.id)
-                                            console.log('📥 Resultado eliminar:', result)
-                                            
-                                            if (result.success) {
-                                              setAsignaciones(prev => {
-                                                const newMap = new Map(prev)
-                                                newMap.delete(key)
-                                                console.log('✅ Eliminado del Map:', key)
-                                                return newMap
-                                              })
-                                              toast.success('Turno eliminado correctamente')
-                                            } else {
-                                              console.error('❌ Error del servidor:', result.error)
-                                              toast.error(result.error || 'Error al eliminar turno')
-                                            }
-                                          } catch (error) {
-                                            console.error('💥 Error inesperado al eliminar turno:', error)
-                                            toast.error('Error inesperado al eliminar turno')
-                                          } finally {
-                                            setIsSaving(false)
-                                          }
-                                        }}
+                                        onDelete={() => handleDeleteByKey(key)}
                                       />
                                     )}
                                   </DroppableCalendarCell>
