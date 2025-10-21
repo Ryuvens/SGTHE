@@ -318,7 +318,24 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         // CRÍTICO: Verificar que la asignación AÚN existe en el Map
         const fechaOrigenStr = format(new Date(fechaOrigen), 'yyyy-MM-dd')
         const keyOrigen = `${fechaOrigenStr}-${usuarioIdOrigen}`
+        
+        // DEBUG: Logs detallados para diagnosticar el problema
+        console.log('🔍 DEBUG - Buscando asignación en Map:')
+        console.log('  fechaOrigen recibida:', fechaOrigen)
+        console.log('  fechaOrigenStr formateada:', fechaOrigenStr)
+        console.log('  usuarioIdOrigen:', usuarioIdOrigen)
+        console.log('  keyOrigen construida:', keyOrigen)
+        console.log('  Tamaño del Map:', asignacionesRef.current.size)
+        console.log('  Keys en Map:', Array.from(asignacionesRef.current.keys()))
+        
         const asignacionOriginal = asignacionesRef.current.get(keyOrigen)
+        console.log('  Asignación encontrada:', asignacionOriginal ? 'SÍ' : 'NO')
+        
+        if (asignacionOriginal) {
+          console.log('  ID en Map:', asignacionOriginal.id)
+          console.log('  ID buscado:', asignacionId)
+          console.log('  IDs coinciden:', asignacionOriginal.id === asignacionId)
+        }
         
         if (!asignacionOriginal || asignacionOriginal.id !== asignacionId) {
           console.log('⚠️ Asignación ya no existe en Map o cambió, abortando movimiento')
