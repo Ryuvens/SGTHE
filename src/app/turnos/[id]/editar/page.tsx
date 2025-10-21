@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { format, eachDayOfInterval, getDay, startOfMonth, endOfMonth } from 'date-fns'
@@ -49,10 +49,16 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const [usuarios, setUsuarios] = useState<any[]>([])
   const [tiposTurno, setTiposTurno] = useState<any[]>([])
   const [asignaciones, setAsignaciones] = useState<Map<string, Asignacion>>(new Map())
+  const asignacionesRef = useRef<Map<string, Asignacion>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeDragData, setActiveDragData] = useState<any>(null)
+
+  // Sincronizar ref con estado
+  useEffect(() => {
+    asignacionesRef.current = asignaciones
+  }, [asignaciones])
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -197,13 +203,13 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       if (activeData?.type === 'asignacion-existente') {
         const { asignacionId, usuarioIdOrigen, fechaOrigen, tipoTurnoId, codigo, nombre, color } = activeData
         
-        console.log('📦 Moviendo turno:', {
+        console.log('📦 Moviendo turno:', JSON.stringify({
           asignacionId,
           tipoTurnoId,
           codigo,
           origen: `${fechaOrigen} - Usuario: ${usuarioIdOrigen}`,
           destino: `${fecha} - Usuario: ${usuarioId}`
-        })
+        }, null, 2))
         
         // Validar todos los datos necesarios
         if (!asignacionId || !tipoTurnoId) {
@@ -229,7 +235,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           
           // 1. Eliminar de posición original
           const deleteResult = await eliminarAsignacion(asignacionId)
-          console.log('📥 Resultado eliminación:', deleteResult)
+          console.log('📥 Resultado eliminación:', JSON.stringify(deleteResult, null, 2))
           
           if (!deleteResult.success) {
             console.error('❌ Falló eliminación:', deleteResult.error)
@@ -253,7 +259,12 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             esFestivo: false,
           })
           
-          console.log('📥 Resultado creación:', result)
+          console.log('📥 Resultado creación:', JSON.stringify({
+            success: result.success,
+            id: result.data?.id,
+            tipoTurnoId: result.data?.tipoTurnoId,
+            codigo: result.data?.tipoTurno?.codigo
+          }, null, 2))
           
           if (result.success && result.data) {
             // Actualizar estado local
@@ -261,11 +272,11 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             const keyDestino = `${fecha}-${usuarioId}`
             
             console.log(`🔄 Actualizando Map: ${keyOrigen} -> ${keyDestino}`)
-            console.log('📦 Nueva asignación:', {
+            console.log('📦 Nueva asignación:', JSON.stringify({
               id: result.data.id,
               tipoTurnoId: result.data.tipoTurnoId,
               codigo: result.data.tipoTurno?.codigo
-            })
+            }, null, 2))
             
             setAsignaciones(prev => {
               const newMap = new Map(prev)
@@ -304,41 +315,40 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setActiveDragData(null)
   }
 
-  // Eliminar asignación por key (obtiene ID actual del Map en tiempo real)
+  // Eliminar asignación por key (usa ref para obtener ID actualizado)
   async function handleDeleteByKey(key: string) {
-    // Obtener ID actual usando callback de setState para acceder al estado más reciente
-    let asignacionId: string | undefined
+    // Usar ref para obtener el Map actual (no del closure)
+    const asignacionActual = asignacionesRef.current.get(key)
     
-    setAsignaciones(prev => {
-      const asignacionActual = prev.get(key)
-      asignacionId = asignacionActual?.id
-      return prev // No modificar el estado aún
-    })
-    
-    if (!asignacionId) {
-      console.error('❌ No se encontró asignación en Map para key:', key)
+    if (!asignacionActual?.id) {
+      console.error('❌ No se encontró asignación en Map para key:', key, 'Map keys:', Array.from(asignacionesRef.current.keys()))
       toast.error('ID de asignación no válido')
       return
     }
     
-    console.log('🗑️ Eliminando asignación (por key):', {
+    console.log('🗑️ Eliminando asignación (por key):', JSON.stringify({
       key,
-      id: asignacionId
-    })
+      id: asignacionActual.id,
+      turno: asignacionActual.tipoTurno?.codigo,
+      fecha: asignacionActual.fecha
+    }, null, 2))
     
     setIsSaving(true)
     
     try {
-      const result = await eliminarAsignacion(asignacionId)
-      console.log('📥 Resultado eliminar:', result)
+      const result = await eliminarAsignacion(asignacionActual.id)
+      console.log('📥 Resultado eliminar:', JSON.stringify(result, null, 2))
       
       if (result.success) {
         setAsignaciones(prev => {
           const newMap = new Map(prev)
-          const asig = newMap.get(key)
-          console.log('🔍 Asignación antes de eliminar:', { id: asig?.id, codigo: asig?.tipoTurno?.codigo })
+          const asigAntes = newMap.get(key)
+          console.log('🔍 Asignación en Map antes de eliminar:', JSON.stringify({
+            id: asigAntes?.id,
+            codigo: asigAntes?.tipoTurno?.codigo
+          }, null, 2))
           newMap.delete(key)
-          console.log('✅ Eliminado del Map:', key)
+          console.log('✅ Eliminado del Map, key:', key)
           return newMap
         })
         toast.success('Turno eliminado correctamente')
