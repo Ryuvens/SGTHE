@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils'
 interface Asignacion {
   id?: string
   fecha: Date
+  usuarioId?: string
   tipoTurnoId?: string
   tipoTurno?: {
     id?: string
@@ -87,7 +88,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         asigMap.set(key, {
           id: asig.id,
           fecha: new Date(asig.fecha),
-          tipoTurnoId: asig.tipoTurnoId || asig.tipoTurno?.id, // CRÍTICO: Incluir tipoTurnoId
+          usuarioId: asig.usuarioId,
+          tipoTurnoId: asig.tipoTurnoId || asig.tipoTurno?.id,
           tipoTurno: {
             id: asig.tipoTurno?.id,
             codigo: asig.tipoTurno?.codigo || '',
@@ -160,20 +162,21 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             esFestivo: false,
           })
           
-          if (result.success) {
+          if (result.success && result.data) {
             // Actualizar asignaciones localmente
             const key = `${fecha}-${usuarioId}`
             setAsignaciones(prev => {
               const newMap = new Map(prev)
               newMap.set(key, {
-                id: result.data?.id,
+                id: result.data!.id,
                 fecha: new Date(fecha),
-                tipoTurnoId: result.data?.tipoTurnoId, // ✅ CRÍTICO: Incluir tipoTurnoId
+                usuarioId: usuarioId,
+                tipoTurnoId: result.data!.tipoTurnoId,
                 tipoTurno: {
-                  id: result.data?.tipoTurno?.id,
-                  codigo: activeData.codigo,
-                  nombre: activeData.nombre,
-                  color: activeData.color
+                  id: result.data!.tipoTurno?.id,
+                  codigo: result.data!.tipoTurno?.codigo || activeData.codigo,
+                  nombre: result.data!.tipoTurno?.nombre || activeData.nombre,
+                  color: result.data!.tipoTurno?.color || activeData.color
                 }
               })
               return newMap
@@ -194,8 +197,17 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       if (activeData?.type === 'asignacion-existente') {
         const { asignacionId, usuarioIdOrigen, fechaOrigen, tipoTurnoId, codigo, nombre, color } = activeData
         
+        console.log('📦 Moviendo turno:', {
+          asignacionId,
+          tipoTurnoId,
+          codigo,
+          origen: `${fechaOrigen} - Usuario: ${usuarioIdOrigen}`,
+          destino: `${fecha} - Usuario: ${usuarioId}`
+        })
+        
         // Validar todos los datos necesarios
         if (!asignacionId || !tipoTurnoId) {
+          console.error('❌ Datos incompletos:', { asignacionId, tipoTurnoId })
           toast.error('Datos de asignación incompletos')
           setActiveId(null)
           setActiveDragData(null)
@@ -205,6 +217,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         // Si es la misma celda, no hacer nada
         const fechaOrigenStr = format(new Date(fechaOrigen), 'yyyy-MM-dd')
         if (usuarioIdOrigen === usuarioId && fechaOrigenStr === fecha) {
+          console.log('⏭️ Misma celda, no mover')
           setActiveId(null)
           setActiveDragData(null)
           return
@@ -212,16 +225,22 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         
         setIsSaving(true)
         try {
+          console.log(`🗑️ Paso 1: Eliminando asignación ${asignacionId}...`)
+          
           // 1. Eliminar de posición original
           const deleteResult = await eliminarAsignacion(asignacionId)
+          console.log('📥 Resultado eliminación:', deleteResult)
           
           if (!deleteResult.success) {
+            console.error('❌ Falló eliminación:', deleteResult.error)
             toast.error('Error al mover: no se pudo eliminar el turno original')
             setIsSaving(false)
             setActiveId(null)
             setActiveDragData(null)
             return
           }
+          
+          console.log('✅ Eliminado exitosamente, creando en nueva posición...')
           
           // 2. Crear en nueva posición
           const result = await asignarTurno({
@@ -234,34 +253,46 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             esFestivo: false,
           })
           
-          if (result.success) {
+          console.log('📥 Resultado creación:', result)
+          
+          if (result.success && result.data) {
             // Actualizar estado local
             const keyOrigen = `${fechaOrigenStr}-${usuarioIdOrigen}`
             const keyDestino = `${fecha}-${usuarioId}`
+            
+            console.log(`🔄 Actualizando Map: ${keyOrigen} -> ${keyDestino}`)
+            console.log('📦 Nueva asignación:', {
+              id: result.data.id,
+              tipoTurnoId: result.data.tipoTurnoId,
+              codigo: result.data.tipoTurno?.codigo
+            })
             
             setAsignaciones(prev => {
               const newMap = new Map(prev)
               newMap.delete(keyOrigen)
               newMap.set(keyDestino, {
-                id: result.data?.id,
+                id: result.data!.id,
                 fecha: new Date(fecha),
-                tipoTurnoId: result.data?.tipoTurnoId, // ✅ CRÍTICO: Incluir tipoTurnoId
+                tipoTurnoId: result.data!.tipoTurnoId,
+                usuarioId: usuarioId,
                 tipoTurno: {
-                  id: result.data?.tipoTurno?.id,
-                  codigo,
-                  nombre,
-                  color
+                  id: result.data!.tipoTurno?.id,
+                  codigo: result.data!.tipoTurno?.codigo || codigo,
+                  nombre: result.data!.tipoTurno?.nombre || nombre,
+                  color: result.data!.tipoTurno?.color || color
                 }
               })
+              console.log('✅ Map actualizado')
               return newMap
             })
             
             toast.success('Turno movido exitosamente')
           } else {
+            console.error('❌ Error al crear en nueva posición:', result.error)
             toast.error(result.error || 'Error al mover el turno')
           }
         } catch (error) {
-          console.error('Error inesperado al mover turno:', error)
+          console.error('💥 Error inesperado al mover turno:', error)
           toast.error('Error inesperado al mover el turno')
         } finally {
           setIsSaving(false)
@@ -481,25 +512,37 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                         }}
                                         onDelete={async () => {
                                           if (!asignacion.id) {
+                                            console.error('❌ ID faltante en asignacion:', asignacion)
                                             toast.error('ID de asignación no válido')
                                             return
                                           }
                                           
+                                          console.log('🗑️ Eliminando asignación:', {
+                                            id: asignacion.id,
+                                            turno: asignacion.tipoTurno?.codigo,
+                                            fecha,
+                                            usuario: usuario.nombre
+                                          })
+                                          
                                           setIsSaving(true)
                                           try {
                                             const result = await eliminarAsignacion(asignacion.id)
+                                            console.log('📥 Resultado eliminar:', result)
+                                            
                                             if (result.success) {
                                               setAsignaciones(prev => {
                                                 const newMap = new Map(prev)
                                                 newMap.delete(key)
+                                                console.log('✅ Eliminado del Map:', key)
                                                 return newMap
                                               })
                                               toast.success('Turno eliminado correctamente')
                                             } else {
+                                              console.error('❌ Error del servidor:', result.error)
                                               toast.error(result.error || 'Error al eliminar turno')
                                             }
                                           } catch (error) {
-                                            console.error('Error al eliminar turno:', error)
+                                            console.error('💥 Error inesperado al eliminar turno:', error)
                                             toast.error('Error inesperado al eliminar turno')
                                           } finally {
                                             setIsSaving(false)
