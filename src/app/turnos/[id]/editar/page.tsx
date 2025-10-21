@@ -630,7 +630,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
         {/* Panel de Métricas HLM */}
         {mostrarMetricas && (
-          <Card className="border-2 border-primary">
+          <Card className="border-2 border-primary" key={`metricas-${renderVersion}-${asignaciones.size}`}>
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2">
@@ -666,6 +666,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                   <tbody>
                     {usuarios.map(usuario => {
                       const m = calcularMetricasUsuario(usuario.id)
+                      
+                      // DEBUG: Log del valor renderizado en UI
+                      console.log(`📊 RENDERIZANDO - ${usuario.nombre} ${usuario.apellido}: ${m.horasTrabajadas}h`)
+                      
                       return (
                         <tr 
                           key={usuario.id} 
