@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { format, eachDayOfInterval, getDay, startOfMonth, endOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Save, ArrowLeft, Users, AlertCircle, Loader2 } from 'lucide-react'
+import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { 
   DraggableTurnoType, 
@@ -55,6 +56,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeDragData, setActiveDragData] = useState<any>(null)
   const [renderVersion, setRenderVersion] = useState(0)
+  const [mostrarMetricas, setMostrarMetricas] = useState(true)
 
   // Sincronizar ref con estado
   useEffect(() => {
@@ -343,6 +345,72 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setActiveDragData(null)
   }
 
+  // Calcular métricas de HLM y validaciones DAN 11 por usuario
+  function calcularMetricasUsuario(usuarioId: string) {
+    const turnosUsuario = Array.from(asignaciones.values())
+      .filter(a => a.usuarioId === usuarioId)
+    
+    // Horas por tipo de turno según documento oficial
+    const HORAS_TURNO: Record<string, number> = {
+      'A': 9, 'AV': 8, 'OP': 12, 'OE': 12, 'B': 9,
+      'CIC': 12, 'C': 9, 'CV': 8, 'D': 12, 'D11S': 9.5,
+      'E': 9, 'EV': 8, 'IA': 9, 'IAV': 8, 'ID': 12,
+      'IN': 3.5, 'IS': 8.5, 'N': 3.5, 'S': 8.5,
+      'O': 9, 'OV': 8, 'PA': 9, 'PAV': 8, 'R': 4,
+      'L': 0, 'FLA': 0, 'DA': 0, 'DV': 0, 'DC': 0, 'DN': 0, 'DS': 0
+    }
+    
+    // Horas devueltas por descansos complementarios
+    const DEVOLUCION_HORAS: Record<string, number> = {
+      'DA': 9, 'DV': 8, 'DC': 12, 'DN': 3.5, 'DS': 8.5
+    }
+    
+    let horasTrabajadas = 0
+    let horasDevueltas = 0
+    const horasSemanales = [0, 0, 0, 0, 0] // 5 semanas máximo
+    const alertas: string[] = []
+    
+    turnosUsuario.forEach(turno => {
+      const codigo = turno.tipoTurno?.codigo || ''
+      const horas = HORAS_TURNO[codigo] || 0
+      const devolucion = DEVOLUCION_HORAS[codigo] || 0
+      
+      horasTrabajadas += horas
+      horasDevueltas += devolucion
+      
+      // Calcular semana del mes
+      const dia = new Date(turno.fecha).getDate()
+      const semana = Math.floor((dia - 1) / 7)
+      if (semana < 5) {
+        horasSemanales[semana] += horas
+      }
+    })
+    
+    // Validaciones DAN 11
+    if (horasTrabajadas > 192) {
+      alertas.push(`Excede 192h/mes (${horasTrabajadas}h)`)
+    }
+    
+    horasSemanales.forEach((horas, semana) => {
+      if (horas > 54) {
+        alertas.push(`Semana ${semana + 1}: ${horas}h (máx 54h)`)
+      }
+    })
+    
+    const balanceHLM = 168 - horasTrabajadas + horasDevueltas
+    const horasExtras = Math.max(0, horasTrabajadas - horasDevueltas - 168)
+    
+    return {
+      horasTrabajadas,
+      horasDevueltas,
+      balanceHLM,
+      horasExtras,
+      alertas,
+      horasSemanales,
+      estado: alertas.length > 0 ? 'alerta' : balanceHLM < 0 ? 'sobrecarga' : 'ok'
+    }
+  }
+
   // Eliminar asignación por ID (busca en Map por ID, no por key)
   async function handleDeleteByKey(asignacionId: string) {
     console.log('🗑️ Eliminando asignación por ID:', asignacionId)
@@ -448,6 +516,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           </div>
           
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setMostrarMetricas(!mostrarMetricas)}
+            >
+              <TrendingUp className="mr-2 h-4 w-4" />
+              {mostrarMetricas ? 'Ocultar' : 'Ver'} Métricas
+            </Button>
             <OpcionesAvanzadas publicacionId={params.id} />
             <Badge variant={publicacion.estado === 'PUBLICADO' ? 'default' : 'secondary'}>
               {publicacion.estado}
@@ -460,6 +536,149 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             )}
           </div>
         </div>
+
+        {/* Panel de Métricas HLM */}
+        {mostrarMetricas && (
+          <Card className="border-2 border-primary">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Panel de Métricas HLM y Validaciones DAN 11
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={() => setMostrarMetricas(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-2">Funcionario</th>
+                      <th className="text-center p-2">H. Trabajadas</th>
+                      <th className="text-center p-2">H. Devueltas</th>
+                      <th className="text-center p-2">Balance HLM</th>
+                      <th className="text-center p-2">H. Extras</th>
+                      <th className="text-center p-2">Sem 1</th>
+                      <th className="text-center p-2">Sem 2</th>
+                      <th className="text-center p-2">Sem 3</th>
+                      <th className="text-center p-2">Sem 4</th>
+                      <th className="text-center p-2">Validaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usuarios.map(usuario => {
+                      const m = calcularMetricasUsuario(usuario.id)
+                      return (
+                        <tr 
+                          key={usuario.id} 
+                          className={cn(
+                            "border-b hover:bg-accent/50",
+                            m.estado === 'alerta' && "bg-red-50 dark:bg-red-950/20"
+                          )}
+                        >
+                          <td className="p-2 font-medium">
+                            {usuario.nombre} {usuario.apellido}
+                          </td>
+                          <td className="text-center p-2">{m.horasTrabajadas}h</td>
+                          <td className="text-center p-2 text-blue-600">
+                            {m.horasDevueltas > 0 ? `-${m.horasDevueltas}h` : '-'}
+                          </td>
+                          <td className={cn(
+                            "text-center p-2 font-bold",
+                            m.balanceHLM < 0 ? "text-red-600" : 
+                            m.balanceHLM > 20 ? "text-yellow-600" : 
+                            "text-green-600"
+                          )}>
+                            {m.balanceHLM > 0 ? '+' : ''}{m.balanceHLM}h
+                          </td>
+                          <td className="text-center p-2">
+                            {m.horasExtras > 0 && (
+                              <span className="text-orange-600 font-semibold">
+                                +{m.horasExtras}h
+                              </span>
+                            )}
+                          </td>
+                          {m.horasSemanales.slice(0, 4).map((h, i) => (
+                            <td 
+                              key={i} 
+                              className={cn(
+                                "text-center p-2",
+                                h > 54 && "text-red-600 font-bold"
+                              )}
+                            >
+                              {h || '-'}
+                            </td>
+                          ))}
+                          <td className="text-center p-2">
+                            {m.alertas.length > 0 ? (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Badge variant="destructive" className="cursor-help">
+                                    ⚠️ {m.alertas.length}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <ul className="text-xs">
+                                    {m.alertas.map((a, i) => (
+                                      <li key={i}>{a}</li>
+                                    ))}
+                                  </ul>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <Badge variant="default" className="bg-green-600">✅ OK</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted font-semibold">
+                      <td className="p-2">TOTALES</td>
+                      <td className="text-center p-2">
+                        {usuarios.reduce((sum, u) => 
+                          sum + calcularMetricasUsuario(u.id).horasTrabajadas, 0
+                        )}h
+                      </td>
+                      <td className="text-center p-2 text-blue-600">
+                        -{usuarios.reduce((sum, u) => 
+                          sum + calcularMetricasUsuario(u.id).horasDevueltas, 0
+                        )}h
+                      </td>
+                      <td className="text-center p-2" colSpan={6}>
+                        Promedio: {usuarios.length > 0 ? Math.round(usuarios.reduce((sum, u) => 
+                          sum + calcularMetricasUsuario(u.id).balanceHLM, 0
+                        ) / usuarios.length) : 0}h
+                      </td>
+                      <td className="text-center p-2">
+                        {usuarios.filter(u => 
+                          calcularMetricasUsuario(u.id).alertas.length > 0
+                        ).length} alertas
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              
+              {/* Leyenda */}
+              <div className="mt-4 p-3 bg-muted rounded-lg text-xs">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>📊 <strong>HLM:</strong> Meta 168h/mes</div>
+                  <div>⚠️ <strong>DAN 11:</strong> Máx 192h/mes, 54h/sem</div>
+                  <div>🔄 <strong>Descansos:</strong> Devuelven horas</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-12 gap-6">
           {/* Sidebar con tipos de turno */}
