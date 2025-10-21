@@ -54,6 +54,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const [isSaving, setIsSaving] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeDragData, setActiveDragData] = useState<any>(null)
+  const [renderVersion, setRenderVersion] = useState(0)
 
   // Sincronizar ref con estado
   useEffect(() => {
@@ -320,6 +321,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               return newMap
             })
             
+            // Incrementar version para forzar re-mount completo de todos los componentes
+            setRenderVersion(v => v + 1)
+            console.log('🔄 Version incrementada para forzar re-mount')
+            
             toast.success('Turno movido exitosamente')
           } else {
             console.error('❌ Error al crear en nueva posición:', result.error)
@@ -563,7 +568,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                   >
                                     {asignacion && (
                                       <DraggableAsignacion
-                                        key={asignacion.id}
+                                        key={`${asignacion.id}-v${renderVersion}`}
                                         asignacion={{
                                           id: asignacion.id,
                                           fecha: fecha,
