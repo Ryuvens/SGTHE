@@ -124,14 +124,31 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     if (overData?.type === 'calendar-cell') {
       const { fecha, usuarioId } = overData
       
+      // Validar que tenemos todos los datos necesarios
+      if (!fecha || !usuarioId) {
+        toast.error('Datos incompletos para la asignación')
+        setActiveId(null)
+        setActiveDragData(null)
+        return
+      }
+      
       // CASO 1: Asignar un nuevo tipo de turno desde el sidebar
       if (activeData?.type === 'turno') {
+        const turnoId = activeData.turnoId
+        
+        if (!turnoId) {
+          toast.error('ID de turno no válido')
+          setActiveId(null)
+          setActiveDragData(null)
+          return
+        }
+        
         setIsSaving(true)
         try {
           const result = await asignarTurno({
             publicacionId: params.id,
             usuarioId,
-            tipoTurnoId: activeData.turnoId,
+            tipoTurnoId: turnoId,
             fecha: new Date(fecha),
             esNocturno: false,
             esDiaInhabil: false,
@@ -170,6 +187,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       if (activeData?.type === 'asignacion-existente') {
         const { asignacionId, usuarioIdOrigen, fechaOrigen, tipoTurnoId, codigo, nombre, color } = activeData
         
+        // Validar todos los datos necesarios
+        if (!asignacionId || !tipoTurnoId) {
+          toast.error('Datos de asignación incompletos')
+          setActiveId(null)
+          setActiveDragData(null)
+          return
+        }
+        
         // Si es la misma celda, no hacer nada
         const fechaOrigenStr = format(new Date(fechaOrigen), 'yyyy-MM-dd')
         if (usuarioIdOrigen === usuarioId && fechaOrigenStr === fecha) {
@@ -181,7 +206,15 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         setIsSaving(true)
         try {
           // 1. Eliminar de posición original
-          await eliminarAsignacion(asignacionId)
+          const deleteResult = await eliminarAsignacion(asignacionId)
+          
+          if (!deleteResult.success) {
+            toast.error('Error al mover: no se pudo eliminar el turno original')
+            setIsSaving(false)
+            setActiveId(null)
+            setActiveDragData(null)
+            return
+          }
           
           // 2. Crear en nueva posición
           const result = await asignarTurno({
@@ -216,11 +249,11 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             
             toast.success('Turno movido exitosamente')
           } else {
-            toast.error(result.error || 'Error al mover turno')
+            toast.error(result.error || 'Error al mover el turno')
           }
         } catch (error) {
-          console.error('Error:', error)
-          toast.error('Error al mover turno')
+          console.error('Error inesperado al mover turno:', error)
+          toast.error('Error inesperado al mover el turno')
         } finally {
           setIsSaving(false)
         }
@@ -233,7 +266,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
   // Eliminar asignación
   async function handleRemoveAsignacion(key: string, asignacionId?: string) {
-    if (!asignacionId) return
+    if (!asignacionId) {
+      toast.error('ID de asignación no válido')
+      return
+    }
 
     setIsSaving(true)
     try {
@@ -245,12 +281,13 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           newMap.delete(key)
           return newMap
         })
-        toast.success('Turno eliminado')
+        toast.success('Turno eliminado correctamente')
       } else {
-        toast.error('Error al eliminar turno')
+        toast.error(result.error || 'Error al eliminar turno')
       }
     } catch (error) {
-      toast.error('Error al eliminar turno')
+      console.error('Error al eliminar turno:', error)
+      toast.error('Error inesperado al eliminar turno')
     } finally {
       setIsSaving(false)
     }

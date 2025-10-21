@@ -451,6 +451,11 @@ export async function asignarTurno(
  */
 export async function eliminarAsignacion(id: string) {
   try {
+    // Validar que el ID existe
+    if (!id) {
+      return { success: false, error: 'ID de asignación no válido' }
+    }
+    
     // Verificar que la asignación existe y la publicación es editable
     const asignacion = await prisma.asignacionTurno.findUnique({
       where: { id },
@@ -469,6 +474,7 @@ export async function eliminarAsignacion(id: string) {
       return { success: false, error: 'La publicación está cerrada' }
     }
 
+    // Eliminar la asignación
     await prisma.asignacionTurno.delete({
       where: { id }
     })
