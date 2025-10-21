@@ -316,29 +316,18 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         }
         
         // CRÍTICO: Verificar que la asignación AÚN existe en el Map
-        const fechaOrigenStr = format(new Date(fechaOrigen), 'yyyy-MM-dd')
+        // FIX: Usar el string directamente si ya está en formato correcto (evitar problemas de zona horaria)
+        const fechaOrigenStr = typeof fechaOrigen === 'string' && fechaOrigen.match(/^\d{4}-\d{2}-\d{2}$/)
+          ? fechaOrigen  // Ya está en formato 'yyyy-MM-dd', usar directamente
+          : format(new Date(fechaOrigen), 'yyyy-MM-dd')  // Formatear si es Date
+        
         const keyOrigen = `${fechaOrigenStr}-${usuarioIdOrigen}`
-        
-        // DEBUG: Logs detallados para diagnosticar el problema
-        console.log('🔍 DEBUG - Buscando asignación en Map:')
-        console.log('  fechaOrigen recibida:', fechaOrigen)
-        console.log('  fechaOrigenStr formateada:', fechaOrigenStr)
-        console.log('  usuarioIdOrigen:', usuarioIdOrigen)
-        console.log('  keyOrigen construida:', keyOrigen)
-        console.log('  Tamaño del Map:', asignacionesRef.current.size)
-        console.log('  Keys en Map:', Array.from(asignacionesRef.current.keys()))
-        
         const asignacionOriginal = asignacionesRef.current.get(keyOrigen)
-        console.log('  Asignación encontrada:', asignacionOriginal ? 'SÍ' : 'NO')
-        
-        if (asignacionOriginal) {
-          console.log('  ID en Map:', asignacionOriginal.id)
-          console.log('  ID buscado:', asignacionId)
-          console.log('  IDs coinciden:', asignacionOriginal.id === asignacionId)
-        }
         
         if (!asignacionOriginal || asignacionOriginal.id !== asignacionId) {
-          console.log('⚠️ Asignación ya no existe en Map o cambió, abortando movimiento')
+          console.log('⚠️ Asignación ya no existe en Map o cambió')
+          console.log('  keyOrigen:', keyOrigen)
+          console.log('  Keys disponibles:', Array.from(asignacionesRef.current.keys()).slice(0, 5))
           toast.error('Esta asignación ya fue modificada o eliminada')
           setActiveId(null)
           setActiveDragData(null)
@@ -347,7 +336,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         
         // Si es la misma celda, no hacer nada
         if (usuarioIdOrigen === usuarioId && fechaOrigenStr === fecha) {
-          console.log('⏭️ Misma celda, no mover')
           setActiveId(null)
           setActiveDragData(null)
           return
@@ -876,7 +864,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                         key={`${asignacion.id}-v${renderVersion}`}
                                         asignacion={{
                                           id: asignacion.id,
-                                          fecha: fecha,
+                                          fecha: fecha, // Usar fecha del loop (ya en formato 'yyyy-MM-dd')
                                           usuarioId: usuario.id,
                                           tipoTurnoId: asignacion.tipoTurnoId || asignacion.tipoTurno?.id,
                                           tipoTurno: {
