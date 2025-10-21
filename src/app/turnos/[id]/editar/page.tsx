@@ -290,9 +290,20 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               codigo: result.data.tipoTurno?.codigo
             }, null, 2))
             
+            // Primero eliminar del Map origen para forzar unmount del componente viejo
             setAsignaciones(prev => {
               const newMap = new Map(prev)
               newMap.delete(keyOrigen)
+              console.log('🗑️ Eliminado del Map origen:', keyOrigen)
+              return newMap
+            })
+            
+            // Pequeña pausa para que React desmonte el componente viejo
+            await new Promise(resolve => setTimeout(resolve, 50))
+            
+            // Luego agregar en destino
+            setAsignaciones(prev => {
+              const newMap = new Map(prev)
               newMap.set(keyDestino, {
                 id: result.data!.id,
                 fecha: new Date(fecha),
@@ -305,7 +316,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                   color: result.data!.tipoTurno?.color || color
                 }
               })
-              console.log('✅ Map actualizado')
+              console.log('✅ Agregado al Map destino:', keyDestino)
               return newMap
             })
             
