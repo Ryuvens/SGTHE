@@ -66,6 +66,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   // Cargar datos iniciales
   useEffect(() => {
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
   async function loadData() {

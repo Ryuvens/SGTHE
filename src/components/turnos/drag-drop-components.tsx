@@ -117,37 +117,42 @@ export function DraggableAsignacion({
   asignacion: any
   onDelete: () => void
 }) {
-  // IMPORTANTE: Verificar que tenemos todos los datos necesarios
-  const tipoTurnoId = asignacion.tipoTurnoId || asignacion.tipoTurno?.id
-  
-  if (!tipoTurnoId || !asignacion.tipoTurno) {
+  // SIEMPRE llamar hooks al principio, sin condiciones
+  const tipoTurnoId = asignacion?.tipoTurnoId || asignacion?.tipoTurno?.id || ''
+  const dragData = {
+    type: 'asignacion-existente',
+    asignacionId: asignacion?.id || '',
+    tipoTurnoId: tipoTurnoId,
+    codigo: asignacion?.tipoTurno?.codigo || '',
+    color: asignacion?.tipoTurno?.color || '#6B7280',
+    nombre: asignacion?.tipoTurno?.nombre || '',
+    usuarioIdOrigen: asignacion?.usuarioId || '',
+    fechaOrigen: asignacion?.fecha 
+      ? (typeof asignacion.fecha === 'string' 
+          ? asignacion.fecha 
+          : asignacion.fecha.toISOString().split('T')[0])
+      : ''
+  }
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `asignacion-${asignacion?.id || 'invalid'}`,
+    data: dragData,
+    disabled: !asignacion?.id || !tipoTurnoId // Deshabilitado si no hay datos válidos
+  })
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  // DESPUÉS del hook, validar datos para mostrar error
+  if (!tipoTurnoId || !asignacion?.tipoTurno) {
     console.error('Asignación sin tipoTurnoId:', asignacion)
     return (
       <div className="rounded px-1.5 py-1.5 text-xs font-semibold text-center bg-red-500 text-white">
         Error
       </div>
     )
-  }
-
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `asignacion-${asignacion.id}`,
-    data: {
-      type: 'asignacion-existente',
-      asignacionId: asignacion.id,
-      tipoTurnoId: tipoTurnoId, // CRÍTICO: Usar tipoTurnoId validado
-      codigo: asignacion.tipoTurno.codigo,
-      color: asignacion.tipoTurno.color,
-      nombre: asignacion.tipoTurno.nombre,
-      usuarioIdOrigen: asignacion.usuarioId,
-      fechaOrigen: typeof asignacion.fecha === 'string' 
-        ? asignacion.fecha 
-        : asignacion.fecha.toISOString().split('T')[0]
-    }
-  })
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
   }
 
   return (
@@ -177,7 +182,7 @@ export function DraggableAsignacion({
           backgroundColor: asignacion.tipoTurno?.color || '#6B7280',
           color: 'white'
         }}
-        title={`${asignacion.tipoTurno?.nombre} - Arrastra para mover`}
+        title={`${asignacion.tipoTurno?.nombre || 'Turno'} - Arrastra para mover`}
       >
         {asignacion.tipoTurno?.codigo}
       </div>
