@@ -135,7 +135,15 @@ export async function getPublicacion(id: string) {
           }
         },
         asignaciones: {
-          include: {
+          select: {
+            id: true,
+            fecha: true,
+            usuarioId: true,
+            tipoTurnoId: true,
+            esNocturno: true,
+            esDiaInhabil: true,
+            esFestivo: true,
+            observaciones: true,
             usuario: {
               select: {
                 id: true,
@@ -406,7 +414,15 @@ export async function asignarTurno(
           esFestivo: validated.esFestivo,
           observaciones: validated.observaciones,
         },
-        include: {
+        select: {
+          id: true,
+          fecha: true,
+          usuarioId: true,
+          tipoTurnoId: true,
+          esNocturno: true,
+          esDiaInhabil: true,
+          esFestivo: true,
+          observaciones: true,
           usuario: {
             select: {
               id: true,
@@ -414,14 +430,29 @@ export async function asignarTurno(
               apellido: true,
             }
           },
-          tipoTurno: true,
+          tipoTurno: {
+            select: {
+              id: true,
+              codigo: true,
+              nombre: true,
+              color: true,
+            }
+          },
         }
       })
     } else {
       // Crear nueva asignación
       asignacion = await prisma.asignacionTurno.create({
         data: validated,
-        include: {
+        select: {
+          id: true,
+          fecha: true,
+          usuarioId: true,
+          tipoTurnoId: true,
+          esNocturno: true,
+          esDiaInhabil: true,
+          esFestivo: true,
+          observaciones: true,
           usuario: {
             select: {
               id: true,
@@ -429,7 +460,14 @@ export async function asignarTurno(
               apellido: true,
             }
           },
-          tipoTurno: true,
+          tipoTurno: {
+            select: {
+              id: true,
+              codigo: true,
+              nombre: true,
+              color: true,
+            }
+          },
         }
       })
     }
