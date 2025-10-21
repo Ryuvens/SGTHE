@@ -496,8 +496,18 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   
   // Manejar selección de celdas con Shift+Click
   function handleCellClick(key: string, fecha: string, usuarioId: string, event: React.MouseEvent) {
+    console.log('🖱️ CELL CLICK:', { 
+      key, 
+      fecha, 
+      usuarioId, 
+      shiftKey: event.shiftKey,
+      lastSelectedCell,
+      selectedCells: selectedCells.length
+    })
+    
     // Si hay Shift presionado, seleccionar rango
     if (event.shiftKey && lastSelectedCell) {
+      console.log('🔵 SHIFT+CLICK detectado, calculando rango...')
       const lastParts = lastSelectedCell.split('-')
       const currentParts = key.split('-')
       
@@ -515,17 +525,23 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         
         // Crear keys para cada día
         const newSelection = dias.map(dia => `${format(dia, 'yyyy-MM-dd')}-${usuarioId}`)
+        console.log('✅ Rango seleccionado:', newSelection)
         setSelectedCells(newSelection)
+        toast.success(`${newSelection.length} celdas seleccionadas`)
       }
     } else {
       // Selección simple (toggle)
+      console.log('🔵 Selección simple')
       if (selectedCells.includes(key)) {
+        console.log('  Deseleccionando:', key)
         setSelectedCells(selectedCells.filter(k => k !== key))
         setLastSelectedCell(null)
       } else {
+        console.log('  Seleccionando:', key)
         setSelectedCells([key])
         setLastSelectedCell(key)
       }
+      console.log('  Nuevo estado selectedCells:', selectedCells)
     }
   }
   
@@ -776,6 +792,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const fechaInicio = startOfMonth(new Date(publicacion.año, publicacion.mes - 1))
   const fechaFin = endOfMonth(fechaInicio)
   const dias = eachDayOfInterval({ start: fechaInicio, end: fechaFin })
+
+  // DEBUG: Log de estados en cada render
+  console.log('🔄 RENDER - Estados actuales:', {
+    selectedCells: selectedCells.length,
+    copiedSequence: copiedSequence.length,
+    mostrarBotones: selectedCells.length > 0,
+    mostrarBadgeCopia: copiedSequence.length > 0
+  })
 
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
