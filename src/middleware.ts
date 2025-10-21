@@ -1,50 +1,56 @@
 // src/middleware.ts
-import { auth } from '@/auth'
+// Middleware optimizado para Edge Runtime (< 1 MB)
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export default auth((req) => {
-  const { nextUrl } = req
-  const isLoggedIn = !!req.auth
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  
+  // Obtener el token de la cookie de NextAuth
+  const token = request.cookies.get('next-auth.session-token') || 
+                request.cookies.get('__Secure-next-auth.session-token')
+  
+  const isLoggedIn = !!token
 
-  // Rutas que requieren autenticación
-  const isProtectedRoute = nextUrl.pathname.startsWith('/dashboard') ||
-                          nextUrl.pathname.startsWith('/turnos') ||
-                          nextUrl.pathname.startsWith('/horas-extras') ||
-                          nextUrl.pathname.startsWith('/usuarios') ||
-                          nextUrl.pathname.startsWith('/reportes') ||
-                          nextUrl.pathname.startsWith('/configuracion')
+  // Rutas públicas que no requieren autenticación
+  const publicPaths = [
+    '/login',
+    '/register',
+    '/verify-email',
+    '/forgot-password',
+    '/kiosco', // Kiosco es público
+  ]
 
-  // Rutas de autenticación (login, register, etc.)
-  const isAuthRoute = nextUrl.pathname.startsWith('/login') ||
-                     nextUrl.pathname.startsWith('/register') ||
-                     nextUrl.pathname.startsWith('/verify-email') ||
-                     nextUrl.pathname.startsWith('/forgot-password')
+  // Verificar si la ruta actual es pública
+  const isPublicPath = publicPaths.some(path => pathname.startsWith(path))
 
-  // Si está en ruta de auth y ya está logueado → dashboard
-  if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL('/dashboard', nextUrl))
+  // Si está en ruta pública y está logueado → dashboard
+  if (isPublicPath && isLoggedIn && pathname !== '/kiosco') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Si está en ruta protegida y NO está logueado → login
-  if (isProtectedRoute && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/login', nextUrl))
+  // Si NO está en ruta pública y NO está logueado → login
+  // (todas las demás rutas requieren autenticación excepto las explícitamente públicas)
+  if (!isPublicPath && !isLoggedIn && pathname !== '/' && !pathname.startsWith('/kiosco')) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('callbackUrl', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   return NextResponse.next()
-})
+}
 
-// Configurar qué rutas ejecutan el middleware
+// Configuración optimizada del matcher
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (auth API routes)
+     * Match all request paths except:
+     * - api routes (except api/auth)
      * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc.)
+     * - _next/image (image optimization)
+     * - favicon.ico, robots.txt, sitemap.xml
+     * - public files (images, fonts, etc.)
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api(?!/auth)|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)$).*)',
   ],
 }
-
