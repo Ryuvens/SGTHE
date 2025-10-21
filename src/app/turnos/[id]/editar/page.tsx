@@ -298,6 +298,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             })
             
             toast.success('Turno movido exitosamente')
+            
+            // Recargar datos del servidor para sincronizar todo
+            console.log('🔄 Recargando datos del servidor...')
+            setTimeout(() => loadData(), 100)
           } else {
             console.error('❌ Error al crear en nueva posición:', result.error)
             toast.error(result.error || 'Error al mover el turno')
