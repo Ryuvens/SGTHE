@@ -496,14 +496,21 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   
   // Manejar selección de celdas con Shift+Click
   function handleCellClick(key: string, fecha: string, usuarioId: string, event: React.MouseEvent) {
-    console.log('🖱️ CELL CLICK:', { 
-      key, 
-      fecha, 
-      usuarioId, 
-      shiftKey: event.shiftKey,
-      lastSelectedCell,
-      selectedCells: selectedCells.length
-    })
+    console.log('🖱️ ═══ handleCellClick EJECUTADO ═══')
+    console.log('  Key:', key)
+    console.log('  Fecha:', fecha)
+    console.log('  UsuarioId:', usuarioId)
+    console.log('  Shift presionado:', event.shiftKey)
+    console.log('  Última celda seleccionada:', lastSelectedCell)
+    console.log('  Celdas actualmente seleccionadas:', selectedCells.length)
+    console.log('  Array selectedCells:', selectedCells)
+    
+    // Verificar si esta celda tiene turno
+    const hasTurno = asignaciones.get(key)
+    console.log('  Esta celda tiene turno:', !!hasTurno)
+    if (hasTurno) {
+      console.log('  Turno:', hasTurno.tipoTurno?.codigo)
+    }
     
     // Si hay Shift presionado, seleccionar rango
     if (event.shiftKey && lastSelectedCell) {
@@ -1176,22 +1183,30 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                   key={dia.toISOString()} 
                                   className="p-0"
                                   onClick={(e) => {
-                                    // CRÍTICO: Capturar click a nivel de TD para que funcione siempre
-                                    // Solo si NO es click en botón de eliminar
+                                    console.log('🔵 ═══ TD CLICKED ═══')
+                                    console.log('  Target:', (e.target as HTMLElement).tagName)
+                                    console.log('  CurrentTarget:', (e.currentTarget as HTMLElement).tagName)
+                                    console.log('  Fecha:', fecha)
+                                    console.log('  UsuarioId:', usuario.id)
+                                    console.log('  CellKey:', key)
+                                    console.log('  Tiene turno:', !!asignacion)
+                                    console.log('  Asignación:', asignacion ? asignacion.tipoTurno?.codigo : 'N/A')
+                                    
+                                    // Verificar si es click en botón de eliminar
                                     const target = e.target as HTMLElement
                                     if (target.tagName === 'BUTTON' || target.closest('button')) {
-                                      return // Permitir que el botón de eliminar funcione
+                                      console.log('❌ Click en botón, abortando')
+                                      return
                                     }
                                     
-                                    console.log('👆 TD CLICK - Celda:', key, 'Tiene turno:', !!asignacion)
+                                    console.log('✅ No es botón, continuando...')
                                     
                                     // Si hay secuencia copiada y la celda está vacía, mostrar preview
                                     if (canPaste) {
-                                      console.log('  → Modo PASTE, mostrando preview')
+                                      console.log('→ Modo PASTE (celda vacía con secuencia copiada)')
                                       handlePastePreview(key)
                                     } else {
-                                      // Si no, manejar selección (SIEMPRE, tenga o no turno)
-                                      console.log('  → Modo SELECCIÓN, llamando handleCellClick')
+                                      console.log('→ Modo SELECCIÓN, llamando handleCellClick...')
                                       handleCellClick(key, fecha, usuario.id, e)
                                     }
                                   }}
