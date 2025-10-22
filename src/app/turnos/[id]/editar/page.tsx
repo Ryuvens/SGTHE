@@ -31,7 +31,7 @@ import {
 import { OpcionesAvanzadas } from '@/components/turnos/opciones-avanzadas'
 import { MiniMapNavigation } from '@/components/turnos/MiniMapNavigation'
 import { PositionIndicators } from '@/components/turnos/PositionIndicators'
-import { StickyScrollBar } from '@/components/turnos/StickyScrollBar'
+// import { StickyScrollBar } from '@/components/turnos/StickyScrollBar'
 
 import { 
   getPublicacion, 
@@ -127,12 +127,24 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
     const handleScroll = () => {
       const scrollLeft = tableContainer.scrollLeft
-      const cellWidth = 45
       const visibleWidth = tableContainer.clientWidth
+      const totalWidth = tableContainer.scrollWidth
       
-      const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
-      const visibleDays = Math.floor(visibleWidth / cellWidth)
-      const endDay = Math.min(31, startDay + visibleDays - 1)
+      // Calcular ancho real de celda basado en el DOM
+      const firstDayCell = tableContainer.querySelector('[data-day]') as HTMLElement
+      const cellWidth = firstDayCell ? firstDayCell.offsetWidth : 45
+      
+      console.log('📏 Medidas reales:', {
+        scrollLeft,
+        visibleWidth,
+        totalWidth,
+        cellWidthCalculado: cellWidth
+      })
+      
+      // Calcular días visibles con el ancho real
+      const startDay = Math.max(1, Math.ceil(scrollLeft / cellWidth) + 1)
+      const visibleCells = Math.floor(visibleWidth / cellWidth)
+      const endDay = Math.min(31, startDay + visibleCells - 1)
       
       console.log('📊 SCROLL DETECTADO:', {
         scrollLeft,
@@ -140,8 +152,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         visibleWidth,
         startDay,
         endDay,
-        visibleDays,
-        calculation: `${scrollLeft} / ${cellWidth} + 1 = ${startDay}`
+        visibleCells,
+        calculation: `ceil(${scrollLeft} / ${cellWidth}) + 1 = ${startDay}`
       })
       
       setVisibleDaysStart(startDay)
@@ -844,7 +856,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       return
     }
     
-    const cellWidth = 45
+    // Calcular ancho real de celda desde el DOM
+    const firstDayCell = tableContainer.querySelector('[data-day]') as HTMLElement
+    const cellWidth = firstDayCell ? firstDayCell.offsetWidth : 45
     const scrollTo = (startDay - 1) * cellWidth
     
     console.log('🎯 Navegando a día:', { 
@@ -1218,12 +1232,13 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px]">
                             Funcionario
                           </th>
-                          {dias.map(dia => {
+                          {dias.map((dia, index) => {
                             const diaSemana = getDay(dia)
                             const esFinDeSemana = diaSemana === 0 || diaSemana === 6
                             return (
                               <th 
-                                key={dia.toISOString()} 
+                                key={dia.toISOString()}
+                                data-day={index + 1}
                                 className={cn(
                                   "p-1 text-center text-xs min-w-[45px] bg-background",
                                   esFinDeSemana && "bg-muted/50"
@@ -1371,13 +1386,13 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     </table>
                     </div>
 
-                    {/* Barra de scroll sticky */}
-                    <StickyScrollBar
+                    {/* Barra de scroll sticky - COMENTADO: El mini-mapa ya proporciona navegación horizontal */}
+                    {/* <StickyScrollBar
                       scrollContainerRef={tableContainerRef}
                       totalDays={dias.length}
                       visibleDaysStart={visibleDaysStart}
                       currentDay={new Date().getDate()}
-                    />
+                    /> */}
                   </>
                 )}
               </CardContent>
