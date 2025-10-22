@@ -1172,27 +1172,34 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               const canPaste = copiedSequence.length > 0 && !asignacion
                               
                               return (
-                                <td key={dia.toISOString()} className="p-0">
+                                <td 
+                                  key={dia.toISOString()} 
+                                  className="p-0"
+                                  onClick={(e) => {
+                                    // CRÍTICO: Capturar click a nivel de TD para que funcione siempre
+                                    // Solo si NO es click en botón de eliminar
+                                    const target = e.target as HTMLElement
+                                    if (target.tagName === 'BUTTON' || target.closest('button')) {
+                                      return // Permitir que el botón de eliminar funcione
+                                    }
+                                    
+                                    console.log('👆 TD CLICK - Celda:', key, 'Tiene turno:', !!asignacion)
+                                    
+                                    // Si hay secuencia copiada y la celda está vacía, mostrar preview
+                                    if (canPaste) {
+                                      console.log('  → Modo PASTE, mostrando preview')
+                                      handlePastePreview(key)
+                                    } else {
+                                      // Si no, manejar selección (SIEMPRE, tenga o no turno)
+                                      console.log('  → Modo SELECCIÓN, llamando handleCellClick')
+                                      handleCellClick(key, fecha, usuario.id, e)
+                                    }
+                                  }}
+                                >
                                   <div
-                                    onClick={(e) => {
-                                      // CRÍTICO: Prevenir que el click se propague al drag & drop
-                                      e.stopPropagation()
-                                      
-                                      console.log('👆 DIV WRAPPER CLICK - Celda:', key)
-                                      
-                                      // Si hay secuencia copiada y la celda está vacía, mostrar preview
-                                      if (canPaste) {
-                                        console.log('  → Modo PASTE, mostrando preview')
-                                        handlePastePreview(key)
-                                      } else {
-                                        // Si no, manejar selección
-                                        console.log('  → Modo SELECCIÓN, llamando handleCellClick')
-                                        handleCellClick(key, fecha, usuario.id, e)
-                                      }
-                                    }}
                                     className={cn(
-                                      "relative cursor-pointer",
-                                      isSelected && "ring-2 ring-blue-500 ring-inset z-10",
+                                      "relative",
+                                      isSelected && "ring-2 ring-blue-500 ring-inset z-10 bg-blue-50 dark:bg-blue-950/20",
                                       canPaste && "hover:bg-green-50 dark:hover:bg-green-950/20"
                                     )}
                                   >
