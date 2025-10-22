@@ -29,6 +29,9 @@ import {
   DraggableAsignacion 
 } from '@/components/turnos/drag-drop-components'
 import { OpcionesAvanzadas } from '@/components/turnos/opciones-avanzadas'
+import { MiniMapNavigation } from '@/components/turnos/MiniMapNavigation'
+import { PositionIndicators } from '@/components/turnos/PositionIndicators'
+import { StickyScrollBar } from '@/components/turnos/StickyScrollBar'
 
 import { 
   getPublicacion, 
@@ -75,6 +78,11 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     turnos: Asignacion[]
     errors: string[]
   } | null>(null)
+
+  // Estados para navegación horizontal
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const [visibleDaysStart, setVisibleDaysStart] = useState(1)
+  const [visibleDaysEnd, setVisibleDaysEnd] = useState(7)
 
   // Sincronizar ref con estado
   useEffect(() => {
@@ -731,6 +739,55 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
   }
 
+  // Funciones de navegación horizontal
+  const handleNavigateToDay = (startDay: number) => {
+    const container = tableContainerRef.current
+    if (!container) return
+    
+    const cellWidth = 120 // Ancho aproximado de cada celda de día (ajustar según tu CSS)
+    const scrollTo = (startDay - 1) * cellWidth
+    container.scrollTo({ left: scrollTo, behavior: 'smooth' })
+  }
+
+  const handleNavigatePrevWeek = () => {
+    const newStart = Math.max(1, visibleDaysStart - 7)
+    handleNavigateToDay(newStart)
+  }
+
+  const handleNavigateNextWeek = () => {
+    const newStart = Math.min(dias.length - 6, visibleDaysStart + 7)
+    handleNavigateToDay(newStart)
+  }
+
+  const handleNavigateToToday = () => {
+    const currentDayOfMonth = new Date().getDate()
+    const todayStart = Math.max(1, currentDayOfMonth - 3)
+    handleNavigateToDay(todayStart)
+  }
+
+  // Calcular días visibles basado en scroll
+  useEffect(() => {
+    const container = tableContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      const scrollLeft = container.scrollLeft
+      const cellWidth = 120 // Debe coincidir con handleNavigateToDay
+      const visibleWidth = container.clientWidth
+      
+      const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
+      const endDay = Math.min(dias.length, Math.ceil((scrollLeft + visibleWidth) / cellWidth))
+      
+      setVisibleDaysStart(startDay)
+      setVisibleDaysEnd(endDay)
+    }
+
+    handleScroll() // Inicial
+    container.addEventListener('scroll', handleScroll)
+    
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [dias.length])
+
 
   if (isLoading) {
     return (
@@ -1033,7 +1090,34 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                    {/* Indicadores de posición */}
+                    <PositionIndicators
+                      currentMonth={fechaInicio}
+                      visibleDaysStart={visibleDaysStart}
+                      visibleDaysEnd={visibleDaysEnd}
+                      totalDays={dias.length}
+                      currentDay={new Date().getDate()}
+                      onNavigatePrevWeek={handleNavigatePrevWeek}
+                      onNavigateNextWeek={handleNavigateNextWeek}
+                      onNavigateToToday={handleNavigateToToday}
+                      className="mb-4"
+                    />
+
+                    {/* Mini-mapa de navegación */}
+                    <MiniMapNavigation
+                      totalDays={dias.length}
+                      visibleDaysStart={visibleDaysStart}
+                      visibleDaysEnd={visibleDaysEnd}
+                      currentDay={new Date().getDate()}
+                      onNavigate={handleNavigateToDay}
+                      className="mb-4"
+                    />
+
+                    <div 
+                      ref={tableContainerRef}
+                      className="overflow-x-auto relative"
+                    >
                     <table className="w-full border-collapse text-sm">
                       <thead>
                         <tr className="border-b">
@@ -1191,7 +1275,16 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                    </div>
+
+                    {/* Barra de scroll sticky */}
+                    <StickyScrollBar
+                      scrollContainerRef={tableContainerRef}
+                      totalDays={dias.length}
+                      visibleDaysStart={visibleDaysStart}
+                      currentDay={new Date().getDate()}
+                    />
+                  </>
                 )}
               </CardContent>
             </Card>
