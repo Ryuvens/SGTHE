@@ -53,7 +53,10 @@ export function PositionIndicators({
         <Button
           variant="outline"
           size="sm"
-          onClick={onNavigatePrevWeek}
+          onClick={() => {
+            console.log('⚡ onClick de Semana anterior ejecutado')
+            onNavigatePrevWeek()
+          }}
           disabled={visibleDaysStart <= 1}
           className="h-8"
         >
@@ -64,7 +67,10 @@ export function PositionIndicators({
         <Button
           variant="outline"
           size="sm"
-          onClick={onNavigateToToday}
+          onClick={() => {
+            console.log('⚡ onClick de Ir a hoy ejecutado')
+            onNavigateToToday()
+          }}
           className="h-8"
         >
           <Calendar className="h-4 w-4 mr-1" />
@@ -74,7 +80,10 @@ export function PositionIndicators({
         <Button
           variant="outline"
           size="sm"
-          onClick={onNavigateNextWeek}
+          onClick={() => {
+            console.log('⚡ onClick de Siguiente semana ejecutado')
+            onNavigateNextWeek()
+          }}
           disabled={visibleDaysEnd >= totalDays}
           className="h-8"
         >

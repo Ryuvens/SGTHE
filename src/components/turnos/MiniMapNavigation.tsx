@@ -23,11 +23,31 @@ export function MiniMapNavigation({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [hoveredDay, setHoveredDay] = useState<number | null>(null)
+  const [canvasWidth, setCanvasWidth] = useState(0)
+
+  // Actualizar ancho del canvas cuando cambia el tamaño del contenedor
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth - 180 // Restar espacio de labels
+        setCanvasWidth(width)
+      }
+    }
+
+    updateCanvasSize()
+    window.addEventListener('resize', updateCanvasSize)
+    
+    return () => window.removeEventListener('resize', updateCanvasSize)
+  }, [])
 
   // Dibujar el mini-mapa
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas || canvasWidth === 0) return
+
+    // Actualizar dimensiones del canvas
+    canvas.width = canvasWidth
+    canvas.height = 40
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -70,7 +90,7 @@ export function MiniMapNavigation({
       ctx.fillRect(hoverX, 0, dayWidth, height)
     }
 
-  }, [totalDays, visibleDaysStart, visibleDaysEnd, currentDay, hoveredDay])
+  }, [totalDays, visibleDaysStart, visibleDaysEnd, currentDay, hoveredDay, canvasWidth])
 
   // Manejar click en el mini-mapa
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -79,11 +99,29 @@ export function MiniMapNavigation({
 
     const rect = canvas.getBoundingClientRect()
     const x = e.clientX - rect.left
-    const dayWidth = canvas.width / totalDays
-    const clickedDay = Math.floor(x / dayWidth) + 1
+    
+    // Usar el ancho REAL del canvas (no el escalado por CSS)
+    const canvasActualWidth = canvas.width
+    const dayWidth = canvasActualWidth / totalDays
+    
+    // Ajustar x según la escala
+    const scaleX = canvasActualWidth / rect.width
+    const adjustedX = x * scaleX
+    
+    const clickedDay = Math.floor(adjustedX / dayWidth) + 1
+
+    console.log('🗺️ Click en mini-mapa:', {
+      clickX: x,
+      adjustedX,
+      dayWidth,
+      clickedDay,
+      totalDays,
+      canvasActualWidth,
+      rectWidth: rect.width,
+      scaleX
+    })
 
     if (clickedDay >= 1 && clickedDay <= totalDays) {
-      // Navegar para que el día clickeado esté centrado en la vista
       const visibleRange = visibleDaysEnd - visibleDaysStart + 1
       const newStart = Math.max(1, clickedDay - Math.floor(visibleRange / 2))
       onNavigate(newStart)
@@ -97,8 +135,13 @@ export function MiniMapNavigation({
 
     const rect = canvas.getBoundingClientRect()
     const x = e.clientX - rect.left
-    const dayWidth = canvas.width / totalDays
-    const day = Math.floor(x / dayWidth) + 1
+    
+    const canvasActualWidth = canvas.width
+    const dayWidth = canvasActualWidth / totalDays
+    const scaleX = canvasActualWidth / rect.width
+    const adjustedX = x * scaleX
+    
+    const day = Math.floor(adjustedX / dayWidth) + 1
 
     if (day >= 1 && day <= totalDays) {
       setHoveredDay(day)
@@ -119,7 +162,7 @@ export function MiniMapNavigation({
         <div className="relative flex-1 group">
           <canvas
             ref={canvasRef}
-            width={800}
+            width={canvasWidth}
             height={40}
             className="w-full h-10 cursor-pointer rounded transition-all hover:shadow-md"
             onClick={handleClick}
@@ -144,4 +187,3 @@ export function MiniMapNavigation({
     </div>
   )
 }
-

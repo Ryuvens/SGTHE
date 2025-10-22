@@ -1143,15 +1143,30 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       totalDays={dias.length}
                       currentDay={new Date().getDate()}
                       onNavigatePrevWeek={() => {
-                        console.log('🔵 Click en Semana anterior')
+                        console.log('🔵 CLICK: Semana anterior')
+                        console.log('📊 Estado actual:', {
+                          visibleDaysStart,
+                          visibleDaysEnd,
+                          totalDays: dias.length
+                        })
                         handleNavigatePrevWeek(dias.length)
                       }}
                       onNavigateNextWeek={() => {
-                        console.log('🔵 Click en Siguiente semana')
+                        console.log('🔵 CLICK: Siguiente semana')
+                        console.log('📊 Estado actual:', {
+                          visibleDaysStart,
+                          visibleDaysEnd,
+                          totalDays: dias.length
+                        })
                         handleNavigateNextWeek(dias.length)
                       }}
                       onNavigateToToday={() => {
-                        console.log('🔵 Click en Ir a hoy')
+                        console.log('🔵 CLICK: Ir a hoy')
+                        console.log('📊 Estado actual:', {
+                          currentDay: new Date().getDate(),
+                          visibleDaysStart,
+                          visibleDaysEnd
+                        })
                         handleNavigateToToday(new Date().getDate(), dias.length)
                       }}
                       className="mb-4"
@@ -1173,8 +1188,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     >
                     <table className="w-full border-collapse text-sm">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2 font-medium sticky left-0 bg-background z-10 min-w-[140px]">
+                        <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
+                          <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px]">
                             Funcionario
                           </th>
                           {dias.map(dia => {
@@ -1184,7 +1199,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               <th 
                                 key={dia.toISOString()} 
                                 className={cn(
-                                  "p-1 text-center text-xs min-w-[45px]",
+                                  "p-1 text-center text-xs min-w-[45px] bg-background",
                                   esFinDeSemana && "bg-muted/50"
                                 )}
                               >
