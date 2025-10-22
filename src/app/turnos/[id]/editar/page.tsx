@@ -130,55 +130,59 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       const visibleWidth = tableContainer.clientWidth
       const totalWidth = tableContainer.scrollWidth
       
-      // ✅ CALCULAR ANCHO REAL desde el DOM
-      const firstDayCell = tableContainer.querySelector('[data-day]') as HTMLElement
-      let cellWidth = 45 // Fallback por si no encuentra la celda
+      // Obtener todas las celdas de días
+      const allDayCells = Array.from(
+        tableContainer.querySelectorAll('[data-day]')
+      ) as HTMLElement[]
       
-      if (firstDayCell) {
-        // Obtener ancho real incluyendo padding, border, margin
-        const rect = firstDayCell.getBoundingClientRect()
-        cellWidth = rect.width
-        console.log('📏 Ancho de celda REAL desde DOM:', {
-          offsetWidth: firstDayCell.offsetWidth,
-          boundingWidth: rect.width,
-          computedWidth: window.getComputedStyle(firstDayCell).width
-        })
-      } else {
-        console.warn('⚠️ No se encontró celda con [data-day]')
+      if (allDayCells.length === 0) {
+        console.warn('⚠️ No se encontraron celdas con [data-day]')
+        return
       }
+      
+      // Obtener el contenedor scrolleable para calcular visibilidad
+      const containerRect = tableContainer.getBoundingClientRect()
+      
+      // Filtrar celdas que están COMPLETAMENTE visibles
+      const visibleCells = allDayCells.filter((cell) => {
+        const cellRect = cell.getBoundingClientRect()
+        const cellLeft = cellRect.left - containerRect.left
+        const cellRight = cellRect.right - containerRect.left
+        
+        // Una celda está visible si su inicio y fin están dentro del viewport
+        return cellLeft >= 0 && cellRight <= containerRect.width
+      })
+      
+      // Obtener primer y último día visible
+      const firstVisibleCell = visibleCells[0]
+      const lastVisibleCell = visibleCells[visibleCells.length - 1]
+      
+      const startDay = firstVisibleCell 
+        ? parseInt(firstVisibleCell.getAttribute('data-day') || '1')
+        : 1
+        
+      const endDay = lastVisibleCell
+        ? parseInt(lastVisibleCell.getAttribute('data-day') || '31')
+        : 31
       
       console.log('📏 Medidas reales:')
       console.log('  - scrollLeft:', scrollLeft)
       console.log('  - visibleWidth:', visibleWidth)
       console.log('  - totalWidth:', totalWidth)
-      console.log('  - cellWidth REAL:', cellWidth)
+      console.log('  - totalCells:', allDayCells.length)
+      console.log('  - visibleCells:', visibleCells.length)
       
-      // Calcular día de inicio
-      const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
-      
-      // Calcular días COMPLETAMENTE visibles
-      const visibleCells = Math.floor(visibleWidth / cellWidth)
-      
-      // Calcular día final
-      const endDay = Math.min(31, startDay + visibleCells - 1)
-      
-      console.log('🔢 Cálculo detallado:')
-      console.log('  - scrollLeft:', scrollLeft)
-      console.log('  - cellWidth:', cellWidth)
-      console.log('  - division:', scrollLeft / cellWidth)
-      console.log('  - floor:', Math.floor(scrollLeft / cellWidth))
-      console.log('  - startDayCalculado:', startDay)
-      console.log('  - visibleCells:', visibleCells)
-      console.log('  - endDayCalculado:', endDay)
+      console.log('🔢 Cálculo desde DOM:')
+      console.log('  - firstVisibleCell:', firstVisibleCell?.getAttribute('data-day'))
+      console.log('  - lastVisibleCell:', lastVisibleCell?.getAttribute('data-day'))
+      console.log('  - startDay:', startDay)
+      console.log('  - endDay:', endDay)
       
       console.log('📊 SCROLL DETECTADO:')
       console.log('  - scrollLeft:', scrollLeft)
-      console.log('  - cellWidth:', cellWidth)
-      console.log('  - visibleWidth:', visibleWidth)
       console.log('  - startDay:', startDay)
       console.log('  - endDay:', endDay)
-      console.log('  - visibleCells:', visibleCells)
-      console.log('  - calculation:', `floor(${scrollLeft} / ${cellWidth}) + 1 = ${startDay}`)
+      console.log('  - visibleCells:', visibleCells.length)
       
       setVisibleDaysStart(startDay)
       setVisibleDaysEnd(endDay)
