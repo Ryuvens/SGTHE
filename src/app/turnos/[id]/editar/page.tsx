@@ -533,15 +533,22 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       // Selección simple (toggle)
       console.log('🔵 Selección simple')
       if (selectedCells.includes(key)) {
-        console.log('  Deseleccionando:', key)
-        setSelectedCells(selectedCells.filter(k => k !== key))
+        console.log('  → Ya está seleccionada, DESELECCIONANDO:', key)
+        setSelectedCells(prev => {
+          const newState = prev.filter(k => k !== key)
+          console.log('  ✅ Nuevo estado después de deseleccionar:', newState)
+          return newState
+        })
         setLastSelectedCell(null)
       } else {
-        console.log('  Seleccionando:', key)
-        setSelectedCells([key])
+        console.log('  → NO está seleccionada, SELECCIONANDO:', key)
+        setSelectedCells(prev => {
+          const newState = [key]
+          console.log('  ✅ Nuevo estado después de seleccionar:', newState)
+          return newState
+        })
         setLastSelectedCell(key)
       }
-      console.log('  Nuevo estado selectedCells:', selectedCells)
     }
   }
   
@@ -1130,18 +1137,25 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 <td key={dia.toISOString()} className="p-0">
                                   <div
                                     onClick={(e) => {
+                                      // CRÍTICO: Prevenir que el click se propague al drag & drop
+                                      e.stopPropagation()
+                                      
+                                      console.log('👆 DIV WRAPPER CLICK - Celda:', key)
+                                      
                                       // Si hay secuencia copiada y la celda está vacía, mostrar preview
                                       if (canPaste) {
+                                        console.log('  → Modo PASTE, mostrando preview')
                                         handlePastePreview(key)
                                       } else {
                                         // Si no, manejar selección
+                                        console.log('  → Modo SELECCIÓN, llamando handleCellClick')
                                         handleCellClick(key, fecha, usuario.id, e)
                                       }
                                     }}
                                     className={cn(
-                                      "relative",
+                                      "relative cursor-pointer",
                                       isSelected && "ring-2 ring-blue-500 ring-inset z-10",
-                                      canPaste && "cursor-pointer hover:bg-green-50 dark:hover:bg-green-950/20"
+                                      canPaste && "hover:bg-green-50 dark:hover:bg-green-950/20"
                                     )}
                                   >
                                     <DroppableCalendarCell
