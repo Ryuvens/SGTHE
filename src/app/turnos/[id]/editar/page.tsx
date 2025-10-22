@@ -512,22 +512,35 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       const currentParts = key.split('-')
       
       // Solo permitir selección en la misma fila (mismo usuario)
-      if (lastParts[lastParts.length - 1] === currentParts[currentParts.length - 1]) {
-        // Calcular rango de fechas
+      const lastUsuarioId = lastParts[lastParts.length - 1]
+      const currentUsuarioId = currentParts[currentParts.length - 1]
+      
+      if (lastUsuarioId === currentUsuarioId) {
+        // Calcular rango de fechas (evitar problema de zona horaria)
         const fechaInicio = lastParts.slice(0, 3).join('-')
         const fechaFin = currentParts.slice(0, 3).join('-')
         
+        console.log('🔍 Calculando rango:', { fechaInicio, fechaFin, usuarioId: currentUsuarioId })
+        
+        // Crear Date con hora del mediodía para evitar problemas de zona horaria
+        const startDate = new Date(fechaInicio + 'T12:00:00')
+        const endDate = new Date(fechaFin + 'T12:00:00')
+        
         // Obtener todos los días entre las fechas
         const dias = eachDayOfInterval({
-          start: new Date(fechaInicio),
-          end: new Date(fechaFin)
+          start: startDate,
+          end: endDate
         })
         
-        // Crear keys para cada día
-        const newSelection = dias.map(dia => `${format(dia, 'yyyy-MM-dd')}-${usuarioId}`)
+        // Crear keys para cada día (usar el usuarioId correcto)
+        const newSelection = dias.map(dia => `${format(dia, 'yyyy-MM-dd')}-${currentUsuarioId}`)
         console.log('✅ Rango seleccionado:', newSelection)
         setSelectedCells(newSelection)
-        toast.success(`${newSelection.length} celdas seleccionadas`)
+        setLastSelectedCell(key) // Actualizar última celda seleccionada
+        toast.success(`${newSelection.length} celda${newSelection.length > 1 ? 's' : ''} seleccionada${newSelection.length > 1 ? 's' : ''}`)
+      } else {
+        console.log('⚠️ Usuarios diferentes, no se puede seleccionar rango entre filas')
+        toast.error('Solo puedes seleccionar celdas del mismo funcionario')
       }
     } else {
       // Selección simple (toggle)
@@ -552,57 +565,67 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
   }
   
-  // Copiar secuencia seleccionada
+  // Copiar secuencia seleccionada (incluyendo espacios vacíos)
   function handleCopySequence() {
     if (selectedCells.length === 0) {
       toast.error('No hay celdas seleccionadas')
       return
     }
     
-    // Obtener turnos de las celdas seleccionadas
-    const sequence: Asignacion[] = []
+    // Copiar TODAS las celdas, incluyendo las vacías (libres)
+    const sequence: (Asignacion | { isEmpty: true; key: string })[] = []
     selectedCells.forEach(key => {
       const asignacion = asignaciones.get(key)
       if (asignacion) {
         sequence.push(asignacion)
+      } else {
+        // Marcar como día libre
+        sequence.push({ isEmpty: true, key })
       }
     })
     
-    if (sequence.length === 0) {
-      toast.error('Las celdas seleccionadas no tienen turnos')
-      return
-    }
+    setCopiedSequence(sequence as any)
     
-    setCopiedSequence(sequence)
-    toast.success(`${sequence.length} turnos copiados: ${sequence.map(t => t.tipoTurno?.codigo).join('-')}`)
+    // Generar string visual de la secuencia
+    const secuenciaStr = sequence
+      .map(item => {
+        if ('isEmpty' in item && item.isEmpty) return 'Libre'
+        return (item as Asignacion).tipoTurno?.codigo || '?'
+      })
+      .join(' → ')
+    
+    toast.success(`${sequence.length} días copiados: ${secuenciaStr}`)
   }
   
-  // Validar pegado de secuencia
+  // Validar pegado de secuencia (considerando días libres)
   function validatePaste(
-    sequence: Asignacion[],
+    sequence: any[],
     targetFecha: string,
     targetUsuarioId: string
   ): { valid: boolean; errors: string[] } {
     const errors: string[] = []
     
-    sequence.forEach((turno, index) => {
+    sequence.forEach((item, index) => {
+      // Si es un día libre, no validar (no se pegará)
+      if (item.isEmpty) return
+      
       // Calcular fecha de destino para este turno
-      const fechaBase = new Date(targetFecha)
+      const fechaBase = new Date(targetFecha + 'T12:00:00')
       fechaBase.setDate(fechaBase.getDate() + index)
       const dayOfWeek = fechaBase.getDay()
       const fechaDestino = format(fechaBase, 'yyyy-MM-dd')
       
       // Validación 1: Turnos de viernes solo en viernes
-      const codigo = turno.tipoTurno?.codigo || ''
+      const codigo = item.tipoTurno?.codigo || ''
       if (codigo === 'AV' && dayOfWeek !== 5) {
-        errors.push(`Turno ${codigo} solo puede ir en viernes`)
+        errors.push(`Día ${index + 1}: Turno ${codigo} solo puede ir en viernes`)
       }
       
       // Validación 2: Verificar si la celda destino ya está ocupada
       const keyDestino = `${fechaDestino}-${targetUsuarioId}`
       const asignacionExistente = asignaciones.get(keyDestino)
       if (asignacionExistente) {
-        errors.push(`Celda ${fechaDestino} ya tiene turno ${asignacionExistente.tipoTurno?.codigo}`)
+        errors.push(`Día ${index + 1} (${fechaDestino}): Ya tiene turno ${asignacionExistente.tipoTurno?.codigo}`)
       }
     })
     
@@ -629,32 +652,45 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     })
   }
   
-  // Ejecutar pegado de secuencia
+  // Ejecutar pegado de secuencia (incluyendo días libres)
   async function handleConfirmPaste() {
     if (!pastePreview) return
     
-    const [targetFecha, ...rest] = pastePreview.destino.split('-')
-    const targetUsuarioId = rest[rest.length - 1]
+    const targetUsuarioId = pastePreview.destino.split('-').pop()!
     const fechaCompleta = pastePreview.destino.split('-').slice(0, 3).join('-')
     
     setIsSaving(true)
+    let turnosPegados = 0
     
     try {
       // Asignar cada turno de la secuencia
       for (let i = 0; i < pastePreview.turnos.length; i++) {
-        const turno = pastePreview.turnos[i]
-        const fechaBase = new Date(fechaCompleta)
+        const item = pastePreview.turnos[i] as any
+        
+        // Si es un día libre (isEmpty), saltarlo
+        if (item.isEmpty) {
+          console.log(`  Día ${i + 1}: Libre (saltando)`)
+          continue
+        }
+        
+        // Calcular fecha destino (con hora del mediodía para evitar zona horaria)
+        const fechaBase = new Date(fechaCompleta + 'T12:00:00')
         fechaBase.setDate(fechaBase.getDate() + i)
         const nuevaFecha = format(fechaBase, 'yyyy-MM-dd')
         
         // Verificar si existe el tipo de turno
-        if (!turno.tipoTurnoId) continue
+        if (!item.tipoTurnoId) {
+          console.log(`  Día ${i + 1}: Sin tipoTurnoId, saltando`)
+          continue
+        }
+        
+        console.log(`  Día ${i + 1}: Asignando ${item.tipoTurno?.codigo} en ${nuevaFecha}`)
         
         const result = await asignarTurno({
           publicacionId: params.id,
           usuarioId: targetUsuarioId,
-          tipoTurnoId: turno.tipoTurnoId,
-          fecha: new Date(nuevaFecha),
+          tipoTurnoId: item.tipoTurnoId,
+          fecha: new Date(nuevaFecha + 'T12:00:00'),
           esNocturno: false,
           esDiaInhabil: false,
           esFestivo: false,
@@ -670,17 +706,19 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               fecha: new Date(nuevaFecha),
               usuarioId: targetUsuarioId,
               tipoTurnoId: result.data!.tipoTurnoId,
-              tipoTurno: turno.tipoTurno
+              tipoTurno: item.tipoTurno
             })
             return newMap
           })
+          turnosPegados++
         }
       }
       
       setRenderVersion(v => v + 1)
-      toast.success(`Secuencia pegada: ${pastePreview.turnos.length} turnos`)
+      toast.success(`Secuencia pegada: ${turnosPegados} turnos (${pastePreview.turnos.length - turnosPegados} días libres)`)
       setPastePreview(null)
       setSelectedCells([])
+      setCopiedSequence([])
       
     } catch (error) {
       console.error('Error al pegar secuencia:', error)
@@ -1246,10 +1284,12 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {pastePreview.turnos.map((turno, index) => {
-                      const fechaBase = new Date(pastePreview.destino.split('-').slice(0, 3).join('-'))
+                    {pastePreview.turnos.map((item: any, index) => {
+                      const fechaBase = new Date(pastePreview.destino.split('-').slice(0, 3).join('-') + 'T12:00:00')
                       fechaBase.setDate(fechaBase.getDate() + index)
                       const fecha = format(fechaBase, 'yyyy-MM-dd')
+                      
+                      const isLibre = item.isEmpty === true
                       
                       return (
                         <tr key={index} className="border-t">
@@ -1257,15 +1297,21 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                             {format(fechaBase, "EEE d 'de' MMMM", { locale: es })}
                           </td>
                           <td className="text-center p-2">
-                            <Badge style={{ backgroundColor: turno.tipoTurno?.color }}>
-                              {turno.tipoTurno?.codigo}
-                            </Badge>
+                            {isLibre ? (
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Libre
+                              </Badge>
+                            ) : (
+                              <Badge style={{ backgroundColor: item.tipoTurno?.color, color: 'white' }}>
+                                {item.tipoTurno?.codigo}
+                              </Badge>
+                            )}
                           </td>
                           <td className="p-2 text-muted-foreground text-xs">
-                            {turno.tipoTurno?.nombre || '-'}
+                            {isLibre ? 'Día de descanso' : (item.tipoTurno?.nombre || '-')}
                           </td>
                           <td className="text-center p-2">
-                            {/* Mostrar horas del turno */}
+                            {isLibre ? '0h' : '12h'}
                           </td>
                         </tr>
                       )
