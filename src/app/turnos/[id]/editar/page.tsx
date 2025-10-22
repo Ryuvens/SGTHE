@@ -1222,16 +1222,17 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       className="mb-4"
                     />
 
-                    <div 
-                      ref={tableContainerRef}
-                      className="overflow-x-auto relative"
-                    >
-                    <table className="w-full border-collapse text-sm">
-                      <thead>
-                        <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
-                          <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px]">
-                            Funcionario
-                          </th>
+                    <div className="relative max-h-[600px] overflow-y-auto">
+                      <div 
+                        ref={tableContainerRef}
+                        className="overflow-x-auto"
+                      >
+                        <table className="w-full border-collapse text-sm">
+                          <thead>
+                            <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
+                              <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px]">
+                                Funcionario
+                              </th>
                           {dias.map((dia, index) => {
                             const diaSemana = getDay(dia)
                             const esFinDeSemana = diaSemana === 0 || diaSemana === 6
@@ -1382,8 +1383,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                             })}
                           </tr>
                         ))}
-                      </tbody>
-                    </table>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
 
                     {/* Barra de scroll sticky - COMENTADO: El mini-mapa ya proporciona navegación horizontal */}
