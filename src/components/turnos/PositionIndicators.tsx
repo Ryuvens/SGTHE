@@ -55,6 +55,7 @@ export function PositionIndicators({
           size="sm"
           onClick={() => {
             console.log('⚡ onClick de Semana anterior ejecutado')
+            console.log('🔍 disabled?', visibleDaysStart <= 1, '(visibleDaysStart:', visibleDaysStart, ')')
             onNavigatePrevWeek()
           }}
           disabled={visibleDaysStart <= 1}

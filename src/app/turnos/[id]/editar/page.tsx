@@ -95,30 +95,53 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
+  // Log de debug al montar el componente
+  useEffect(() => {
+    console.log('🚀 Componente EditarRolPage montado')
+    console.log('📊 Estado inicial:', {
+      visibleDaysStart: visibleDaysStart,
+      visibleDaysEnd: visibleDaysEnd,
+      hasRef: !!tableContainerRef.current
+    })
+    
+    setTimeout(() => {
+      if (tableContainerRef.current) {
+        console.log('📏 Dimensiones del container:', {
+          scrollWidth: tableContainerRef.current.scrollWidth,
+          clientWidth: tableContainerRef.current.clientWidth,
+          scrollLeft: tableContainerRef.current.scrollLeft,
+          hasOverflow: tableContainerRef.current.scrollWidth > tableContainerRef.current.clientWidth
+        })
+      }
+    }, 1000)
+  }, [])
+
   // Calcular días visibles basado en scroll
   useEffect(() => {
     const container = tableContainerRef.current
-    if (!container) return
+    if (!container) {
+      console.warn('⚠️ tableContainerRef no disponible')
+      return
+    }
 
     const handleScroll = () => {
       const scrollLeft = container.scrollLeft
       const cellWidth = 45 // Ancho real de las celdas: min-w-[45px]
       const visibleWidth = container.clientWidth
       
-      // Calcular día de inicio (primer día visible)
+      // Calcular días visibles
       const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
-      
-      // Calcular día final (último día visible)
       const visibleDays = Math.floor(visibleWidth / cellWidth)
       const endDay = Math.min(31, startDay + visibleDays - 1)
       
-      console.log('📊 Scroll detectado:', {
-        scrollLeft,
-        cellWidth,
-        visibleWidth,
-        startDay,
-        endDay,
-        visibleDays
+      console.log('📊 SCROLL DETECTADO:', {
+        scrollLeft: scrollLeft,
+        cellWidth: cellWidth,
+        visibleWidth: visibleWidth,
+        startDay: startDay,
+        endDay: endDay,
+        visibleDays: visibleDays,
+        calculation: `${scrollLeft} / ${cellWidth} + 1 = ${startDay}`
       })
       
       setVisibleDaysStart(startDay)
@@ -126,17 +149,22 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
 
     // Ejecutar inmediatamente
+    console.log('🔧 Iniciando listener de scroll...')
     handleScroll()
     
-    // Escuchar scroll
-    container.addEventListener('scroll', handleScroll)
+    // Listener de scroll
+    container.addEventListener('scroll', handleScroll, { passive: true })
     
-    // Escuchar resize (por si cambia el ancho de la ventana)
-    window.addEventListener('resize', handleScroll)
+    // Listener de resize
+    const handleResize = () => {
+      console.log('📐 Resize detectado')
+      handleScroll()
+    }
+    window.addEventListener('resize', handleResize)
     
     return () => {
       container.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('resize', handleScroll)
+      window.removeEventListener('resize', handleResize)
     }
   }, [])
 
