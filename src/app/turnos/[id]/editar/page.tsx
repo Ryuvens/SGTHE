@@ -118,53 +118,74 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
   // Calcular días visibles basado en scroll
   useEffect(() => {
-    const container = tableContainerRef.current
-    if (!container) {
-      console.warn('⚠️ tableContainerRef no disponible')
-      return
-    }
+    let scrollHandler: ((e: Event) => void) | null = null
+    let resizeHandler: (() => void) | null = null
+    
+    // Esperar a que el DOM esté listo
+    const timer = setTimeout(() => {
+      const container = tableContainerRef.current
+      
+      if (!container) {
+        console.error('❌ CRÍTICO: tableContainerRef no disponible después de timeout')
+        console.log('🔍 Verificar que el ref esté en el elemento correcto')
+        return
+      }
 
-    const handleScroll = () => {
-      const scrollLeft = container.scrollLeft
-      const cellWidth = 45 // Ancho real de las celdas: min-w-[45px]
-      const visibleWidth = container.clientWidth
-      
-      // Calcular días visibles
-      const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
-      const visibleDays = Math.floor(visibleWidth / cellWidth)
-      const endDay = Math.min(31, startDay + visibleDays - 1)
-      
-      console.log('📊 SCROLL DETECTADO:', {
-        scrollLeft: scrollLeft,
-        cellWidth: cellWidth,
-        visibleWidth: visibleWidth,
-        startDay: startDay,
-        endDay: endDay,
-        visibleDays: visibleDays,
-        calculation: `${scrollLeft} / ${cellWidth} + 1 = ${startDay}`
+      console.log('✅ tableContainerRef disponible:', {
+        element: container.tagName,
+        classList: Array.from(container.classList),
+        scrollWidth: container.scrollWidth,
+        clientWidth: container.clientWidth,
+        hasOverflow: container.scrollWidth > container.clientWidth
       })
-      
-      setVisibleDaysStart(startDay)
-      setVisibleDaysEnd(endDay)
-    }
 
-    // Ejecutar inmediatamente
-    console.log('🔧 Iniciando listener de scroll...')
-    handleScroll()
-    
-    // Listener de scroll
-    container.addEventListener('scroll', handleScroll, { passive: true })
-    
-    // Listener de resize
-    const handleResize = () => {
-      console.log('📐 Resize detectado')
+      const handleScroll = () => {
+        const scrollLeft = container.scrollLeft
+        const cellWidth = 45 // Ancho de cada celda
+        const visibleWidth = container.clientWidth
+        
+        const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
+        const visibleDays = Math.floor(visibleWidth / cellWidth)
+        const endDay = Math.min(31, startDay + visibleDays - 1)
+        
+        console.log('📊 SCROLL DETECTADO:', {
+          scrollLeft: scrollLeft,
+          cellWidth: cellWidth,
+          visibleWidth: visibleWidth,
+          startDay: startDay,
+          endDay: endDay,
+          visibleDays: visibleDays,
+          calculation: `${scrollLeft} / ${cellWidth} + 1 = ${startDay}`
+        })
+        
+        setVisibleDaysStart(startDay)
+        setVisibleDaysEnd(endDay)
+      }
+
+      const handleResize = () => {
+        console.log('📐 Resize detectado')
+        handleScroll()
+      }
+
+      console.log('🔧 Iniciando listener de scroll...')
       handleScroll()
-    }
-    window.addEventListener('resize', handleResize)
-    
+      
+      scrollHandler = handleScroll
+      resizeHandler = handleResize
+      
+      container.addEventListener('scroll', handleScroll, { passive: true })
+      window.addEventListener('resize', handleResize)
+    }, 100) // Esperar 100ms para que el DOM esté listo
+
     return () => {
-      container.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('resize', handleResize)
+      clearTimeout(timer)
+      
+      if (scrollHandler && tableContainerRef.current) {
+        tableContainerRef.current.removeEventListener('scroll', scrollHandler)
+      }
+      if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler)
+      }
     }
   }, [])
 
