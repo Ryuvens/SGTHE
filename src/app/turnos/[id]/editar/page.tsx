@@ -95,6 +95,29 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
+  // Calcular días visibles basado en scroll
+  useEffect(() => {
+    const container = tableContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      const scrollLeft = container.scrollLeft
+      const cellWidth = 120
+      const visibleWidth = container.clientWidth
+      
+      const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
+      const endDay = Math.min(31, Math.ceil((scrollLeft + visibleWidth) / cellWidth))
+      
+      setVisibleDaysStart(startDay)
+      setVisibleDaysEnd(endDay)
+    }
+
+    handleScroll()
+    container.addEventListener('scroll', handleScroll)
+    
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [])
+
   async function loadData() {
     try {
       const pubResult = await getPublicacion(params.id)
@@ -767,7 +790,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const dias = eachDayOfInterval({ start: fechaInicio, end: fechaFin })
 
   // Funciones de navegación horizontal
-  const handleNavigateToDay = (startDay: number) => {
+  const handleNavigateToDay = (startDay: number, totalDays: number) => {
     const container = tableContainerRef.current
     if (!container) return
     
@@ -776,45 +799,20 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     container.scrollTo({ left: scrollTo, behavior: 'smooth' })
   }
 
-  const handleNavigatePrevWeek = () => {
+  const handleNavigatePrevWeek = (totalDays: number) => {
     const newStart = Math.max(1, visibleDaysStart - 7)
-    handleNavigateToDay(newStart)
+    handleNavigateToDay(newStart, totalDays)
   }
 
-  const handleNavigateNextWeek = () => {
-    const newStart = Math.min(dias.length - 6, visibleDaysStart + 7)
-    handleNavigateToDay(newStart)
+  const handleNavigateNextWeek = (totalDays: number) => {
+    const newStart = Math.min(totalDays - 6, visibleDaysStart + 7)
+    handleNavigateToDay(newStart, totalDays)
   }
 
-  const handleNavigateToToday = () => {
-    const currentDayOfMonth = new Date().getDate()
-    const todayStart = Math.max(1, currentDayOfMonth - 3)
-    handleNavigateToDay(todayStart)
+  const handleNavigateToToday = (currentDay: number, totalDays: number) => {
+    const todayStart = Math.max(1, currentDay - 3)
+    handleNavigateToDay(todayStart, totalDays)
   }
-
-  // Calcular días visibles basado en scroll
-  useEffect(() => {
-    const container = tableContainerRef.current
-    if (!container) return
-
-    const handleScroll = () => {
-      const scrollLeft = container.scrollLeft
-      const cellWidth = 120 // Debe coincidir con handleNavigateToDay
-      const visibleWidth = container.clientWidth
-      
-      const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
-      const endDay = Math.min(dias.length, Math.ceil((scrollLeft + visibleWidth) / cellWidth))
-      
-      setVisibleDaysStart(startDay)
-      setVisibleDaysEnd(endDay)
-    }
-
-    handleScroll() // Inicial
-    container.addEventListener('scroll', handleScroll)
-    
-    return () => container.removeEventListener('scroll', handleScroll)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dias.length])
 
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -1099,9 +1097,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       visibleDaysEnd={visibleDaysEnd}
                       totalDays={dias.length}
                       currentDay={new Date().getDate()}
-                      onNavigatePrevWeek={handleNavigatePrevWeek}
-                      onNavigateNextWeek={handleNavigateNextWeek}
-                      onNavigateToToday={handleNavigateToToday}
+                      onNavigatePrevWeek={() => handleNavigatePrevWeek(dias.length)}
+                      onNavigateNextWeek={() => handleNavigateNextWeek(dias.length)}
+                      onNavigateToToday={() => handleNavigateToToday(new Date().getDate(), dias.length)}
                       className="mb-4"
                     />
 
@@ -1111,7 +1109,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       visibleDaysStart={visibleDaysStart}
                       visibleDaysEnd={visibleDaysEnd}
                       currentDay={new Date().getDate()}
-                      onNavigate={handleNavigateToDay}
+                      onNavigate={(startDay) => handleNavigateToDay(startDay, dias.length)}
                       className="mb-4"
                     />
 
