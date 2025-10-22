@@ -102,20 +102,42 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
     const handleScroll = () => {
       const scrollLeft = container.scrollLeft
-      const cellWidth = 120
+      const cellWidth = 45 // Ancho real de las celdas: min-w-[45px]
       const visibleWidth = container.clientWidth
       
+      // Calcular día de inicio (primer día visible)
       const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
-      const endDay = Math.min(31, Math.ceil((scrollLeft + visibleWidth) / cellWidth))
+      
+      // Calcular día final (último día visible)
+      const visibleDays = Math.floor(visibleWidth / cellWidth)
+      const endDay = Math.min(31, startDay + visibleDays - 1)
+      
+      console.log('📊 Scroll detectado:', {
+        scrollLeft,
+        cellWidth,
+        visibleWidth,
+        startDay,
+        endDay,
+        visibleDays
+      })
       
       setVisibleDaysStart(startDay)
       setVisibleDaysEnd(endDay)
     }
 
+    // Ejecutar inmediatamente
     handleScroll()
+    
+    // Escuchar scroll
     container.addEventListener('scroll', handleScroll)
     
-    return () => container.removeEventListener('scroll', handleScroll)
+    // Escuchar resize (por si cambia el ancho de la ventana)
+    window.addEventListener('resize', handleScroll)
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleScroll)
+    }
   }, [])
 
   async function loadData() {
@@ -792,25 +814,48 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   // Funciones de navegación horizontal
   const handleNavigateToDay = (startDay: number, totalDays: number) => {
     const container = tableContainerRef.current
-    if (!container) return
+    if (!container) {
+      console.error('❌ Container no disponible')
+      return
+    }
     
-    const cellWidth = 120 // Ancho aproximado de cada celda de día (ajustar según tu CSS)
+    const cellWidth = 45 // Ancho real de las celdas: min-w-[45px]
     const scrollTo = (startDay - 1) * cellWidth
+    
+    console.log('🎯 Navegando a día:', { 
+      startDay, 
+      cellWidth, 
+      scrollTo 
+    })
+    
     container.scrollTo({ left: scrollTo, behavior: 'smooth' })
   }
 
   const handleNavigatePrevWeek = (totalDays: number) => {
     const newStart = Math.max(1, visibleDaysStart - 7)
+    console.log('⬅️ Semana anterior:', { 
+      currentStart: visibleDaysStart, 
+      newStart 
+    })
     handleNavigateToDay(newStart, totalDays)
   }
 
   const handleNavigateNextWeek = (totalDays: number) => {
     const newStart = Math.min(totalDays - 6, visibleDaysStart + 7)
+    console.log('➡️ Siguiente semana:', { 
+      currentStart: visibleDaysStart, 
+      newStart, 
+      totalDays 
+    })
     handleNavigateToDay(newStart, totalDays)
   }
 
   const handleNavigateToToday = (currentDay: number, totalDays: number) => {
     const todayStart = Math.max(1, currentDay - 3)
+    console.log('📅 Ir a hoy:', { 
+      currentDay, 
+      todayStart 
+    })
     handleNavigateToDay(todayStart, totalDays)
   }
 
@@ -1097,9 +1142,18 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       visibleDaysEnd={visibleDaysEnd}
                       totalDays={dias.length}
                       currentDay={new Date().getDate()}
-                      onNavigatePrevWeek={() => handleNavigatePrevWeek(dias.length)}
-                      onNavigateNextWeek={() => handleNavigateNextWeek(dias.length)}
-                      onNavigateToToday={() => handleNavigateToToday(new Date().getDate(), dias.length)}
+                      onNavigatePrevWeek={() => {
+                        console.log('🔵 Click en Semana anterior')
+                        handleNavigatePrevWeek(dias.length)
+                      }}
+                      onNavigateNextWeek={() => {
+                        console.log('🔵 Click en Siguiente semana')
+                        handleNavigateNextWeek(dias.length)
+                      }}
+                      onNavigateToToday={() => {
+                        console.log('🔵 Click en Ir a hoy')
+                        handleNavigateToToday(new Date().getDate(), dias.length)
+                      }}
                       className="mb-4"
                     />
 
