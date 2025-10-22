@@ -141,10 +141,24 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         cellWidthCalculado: cellWidth
       })
       
-      // Calcular días visibles con el ancho real
-      const startDay = Math.max(1, Math.ceil(scrollLeft / cellWidth) + 1)
+      // Calcular día de inicio (ajustado)
+      const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
+      
+      // Calcular días completamente visibles
       const visibleCells = Math.floor(visibleWidth / cellWidth)
+      
+      // Calcular día final
       const endDay = Math.min(31, startDay + visibleCells - 1)
+      
+      console.log('🔢 Cálculo detallado:', {
+        scrollLeft,
+        cellWidth,
+        division: scrollLeft / cellWidth,
+        floor: Math.floor(scrollLeft / cellWidth),
+        startDayCalculado: startDay,
+        visibleCells,
+        endDayCalculado: endDay
+      })
       
       console.log('📊 SCROLL DETECTADO:', {
         scrollLeft,
@@ -153,7 +167,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         startDay,
         endDay,
         visibleCells,
-        calculation: `ceil(${scrollLeft} / ${cellWidth}) + 1 = ${startDay}`
+        calculation: `floor(${scrollLeft} / ${cellWidth}) + 1 = ${startDay}`
       })
       
       setVisibleDaysStart(startDay)
@@ -1230,7 +1244,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         <table className="w-full border-collapse text-sm">
                           <thead>
                             <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
-                              <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px]">
+                              <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px] border-r border-border shadow-sm">
                                 Funcionario
                               </th>
                           {dias.map((dia, index) => {
@@ -1255,7 +1269,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       <tbody>
                         {usuarios.map(usuario => (
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
-                            <td className="p-2 font-medium sticky left-0 bg-background z-10">
+                            <td className="p-2 font-medium sticky left-0 bg-background z-10 border-r border-border shadow-sm">
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
                                 {usuario.abreviatura?.codigo && (
