@@ -739,6 +739,33 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
   }
 
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!publicacion) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">No se encontró la publicación</h2>
+          <Button onClick={() => router.push('/turnos')}>
+            Volver a Turnos
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const fechaInicio = startOfMonth(new Date(publicacion.año, publicacion.mes - 1))
+  const fechaFin = endOfMonth(fechaInicio)
+  const dias = eachDayOfInterval({ start: fechaInicio, end: fechaFin })
+
   // Funciones de navegación horizontal
   const handleNavigateToDay = (startDay: number) => {
     const container = tableContainerRef.current
@@ -786,34 +813,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     container.addEventListener('scroll', handleScroll)
     
     return () => container.removeEventListener('scroll', handleScroll)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dias.length])
-
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  if (!publicacion) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">No se encontró la publicación</h2>
-          <Button onClick={() => router.push('/turnos')}>
-            Volver a Turnos
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  const fechaInicio = startOfMonth(new Date(publicacion.año, publicacion.mes - 1))
-  const fechaFin = endOfMonth(fechaInicio)
-  const dias = eachDayOfInterval({ start: fechaInicio, end: fechaFin })
 
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
