@@ -144,22 +144,15 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
   // Función mejorada para eliminar asignación con verificación de existencia
   async function handleEliminarAsignacion(asignacionId: string, key: string) {
-    console.log('🗑️ Intentando eliminar asignación:', { asignacionId, key })
-    
     // CRÍTICO: Verificar que existe en el Map antes de eliminar
     const asignacion = asignacionesRef.current.get(key)
     
     if (!asignacion) {
-      console.log('⚠️ Asignación no encontrada en Map (key):', key)
       toast.error('Esta asignación ya fue eliminada')
       return
     }
     
     if (asignacion.id !== asignacionId) {
-      console.log('⚠️ ID de asignación no coincide:', {
-        enMap: asignacion.id,
-        solicitado: asignacionId
-      })
       toast.error('La asignación ha cambiado, recarga la página')
       return
     }
@@ -171,7 +164,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setAsignaciones(prev => {
       const newMap = new Map(prev)
       newMap.delete(key)
-      console.log('✅ Eliminado del Map (optimistic):', key)
       return newMap
     })
     
@@ -183,7 +175,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       const result = await eliminarAsignacion(asignacionId)
       
       if (!result.success) {
-        console.error('❌ Error al eliminar de BD, revirtiendo...')
+        console.error('Error al eliminar de BD:', result.error)
         // Si falla, restaurar en el Map
         setAsignaciones(prev => {
           const newMap = new Map(prev)
@@ -193,11 +185,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         setRenderVersion(v => v + 1)
         toast.error(result.error || 'Error al eliminar')
       } else {
-        console.log('✅ Turno eliminado exitosamente de BD')
         toast.success('Turno eliminado')
       }
     } catch (error) {
-      console.error('💥 Error inesperado al eliminar:', error)
+      console.error('Error inesperado al eliminar:', error)
       // Revertir
       setAsignaciones(prev => {
         const newMap = new Map(prev)
@@ -316,17 +307,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       if (activeData?.type === 'asignacion-existente') {
         const { asignacionId, usuarioIdOrigen, fechaOrigen, tipoTurnoId, codigo, nombre, color } = activeData
         
-        console.log('📦 Intentando mover turno:', JSON.stringify({
-          asignacionId,
-          tipoTurnoId,
-          codigo,
-          origen: `${fechaOrigen} - Usuario: ${usuarioIdOrigen}`,
-          destino: `${fecha} - Usuario: ${usuarioId}`
-        }, null, 2))
-        
         // Validar todos los datos necesarios
         if (!asignacionId || !tipoTurnoId) {
-          console.error('❌ Datos incompletos:', { asignacionId, tipoTurnoId })
+          console.error('Datos incompletos para mover turno:', { asignacionId, tipoTurnoId })
           toast.error('Datos de asignación incompletos')
           setActiveId(null)
           setActiveDragData(null)
@@ -343,9 +326,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         const asignacionOriginal = asignacionesRef.current.get(keyOrigen)
         
         if (!asignacionOriginal || asignacionOriginal.id !== asignacionId) {
-          console.log('⚠️ Asignación ya no existe en Map o cambió')
-          console.log('  keyOrigen:', keyOrigen)
-          console.log('  Keys disponibles:', Array.from(asignacionesRef.current.keys()).slice(0, 5))
           toast.error('Esta asignación ya fue modificada o eliminada')
           setActiveId(null)
           setActiveDragData(null)
@@ -372,7 +352,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           }
           // Eliminar la asignación del destino primero
           if (asignacionDestino.id) {
-            console.log('🗑️ Eliminando turno en destino antes de mover')
             await handleEliminarAsignacion(asignacionDestino.id, keyDestino)
             await new Promise(resolve => setTimeout(resolve, 100))
           } else {
@@ -386,8 +365,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         setIsSaving(true)
         
         try {
-          console.log('🔄 PASO 1: Actualizar Map local (optimistic update)')
-          
           // IMPORTANTE: Actualizar el Map ANTES de hacer la llamada a la BD
           setAsignaciones(prev => {
             const newMap = new Map(prev)
@@ -400,13 +377,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               fecha: new Date(fecha),
               usuarioId: usuarioId
             })
-            console.log('✅ Map actualizado (optimistic)')
             return newMap
           })
           
           setRenderVersion(v => v + 1)
-          
-          console.log('🔄 PASO 2: Eliminar y crear en BD en paralelo')
           
           // Hacer las operaciones en la BD en paralelo
           const [deleteResult, createResult] = await Promise.all([
@@ -422,13 +396,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             })
           ])
           
-          console.log('📥 Resultados BD:', {
-            delete: deleteResult.success,
-            create: createResult.success
-          })
-          
           if (!createResult.success) {
-            console.error('❌ Error al crear en BD, revirtiendo Map')
+            console.error('Error al crear en BD, revirtiendo Map:', createResult.error)
             // Si falla la creación, revertir el Map
             setAsignaciones(prev => {
               const newMap = new Map(prev)
@@ -443,8 +412,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             setIsSaving(false)
             return
           }
-          
-          console.log('✅ PASO 3: Actualizar Map con ID real de BD')
           
           // Actualizar con el ID real de la BD
           setAsignaciones(prev => {
@@ -461,7 +428,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                 color: createResult.data!.tipoTurno?.color || color
               }
             })
-            console.log('✅ Map actualizado con ID real:', createResult.data!.id)
             return newMap
           })
           
@@ -496,25 +462,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   
   // Manejar selección de celdas con Shift+Click
   function handleCellClick(key: string, fecha: string, usuarioId: string, event: React.MouseEvent) {
-    console.log('🖱️ ═══ handleCellClick EJECUTADO ═══')
-    console.log('  Key:', key)
-    console.log('  Fecha:', fecha)
-    console.log('  UsuarioId:', usuarioId)
-    console.log('  Shift presionado:', event.shiftKey)
-    console.log('  Última celda seleccionada:', lastSelectedCell)
-    console.log('  Celdas actualmente seleccionadas:', selectedCells.length)
-    console.log('  Array selectedCells:', selectedCells)
-    
-    // Verificar si esta celda tiene turno
-    const hasTurno = asignaciones.get(key)
-    console.log('  Esta celda tiene turno:', !!hasTurno)
-    if (hasTurno) {
-      console.log('  Turno:', hasTurno.tipoTurno?.codigo)
-    }
-    
     // Si hay Shift presionado, seleccionar rango
     if (event.shiftKey && lastSelectedCell) {
-      console.log('🔵 SHIFT+CLICK detectado, calculando rango...')
       const lastParts = lastSelectedCell.split('-')
       const currentParts = key.split('-')
       
@@ -526,8 +475,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         // Calcular rango de fechas (evitar problema de zona horaria)
         const fechaInicio = lastParts.slice(0, 3).join('-')
         const fechaFin = currentParts.slice(0, 3).join('-')
-        
-        console.log('🔍 Calculando rango:', { fechaInicio, fechaFin, usuarioId: currentUsuarioId })
         
         // Crear Date con hora del mediodía para evitar problemas de zona horaria
         const startDate = new Date(fechaInicio + 'T12:00:00')
@@ -541,32 +488,19 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         
         // Crear keys para cada día (usar el usuarioId correcto)
         const newSelection = dias.map(dia => `${format(dia, 'yyyy-MM-dd')}-${currentUsuarioId}`)
-        console.log('✅ Rango seleccionado:', newSelection)
         setSelectedCells(newSelection)
         setLastSelectedCell(key) // Actualizar última celda seleccionada
         toast.success(`${newSelection.length} celda${newSelection.length > 1 ? 's' : ''} seleccionada${newSelection.length > 1 ? 's' : ''}`)
       } else {
-        console.log('⚠️ Usuarios diferentes, no se puede seleccionar rango entre filas')
         toast.error('Solo puedes seleccionar celdas del mismo funcionario')
       }
     } else {
       // Selección simple (toggle)
-      console.log('🔵 Selección simple')
       if (selectedCells.includes(key)) {
-        console.log('  → Ya está seleccionada, DESELECCIONANDO:', key)
-        setSelectedCells(prev => {
-          const newState = prev.filter(k => k !== key)
-          console.log('  ✅ Nuevo estado después de deseleccionar:', newState)
-          return newState
-        })
+        setSelectedCells(prev => prev.filter(k => k !== key))
         setLastSelectedCell(null)
       } else {
-        console.log('  → NO está seleccionada, SELECCIONANDO:', key)
-        setSelectedCells(prev => {
-          const newState = [key]
-          console.log('  ✅ Nuevo estado después de seleccionar:', newState)
-          return newState
-        })
+        setSelectedCells([key])
         setLastSelectedCell(key)
       }
     }
@@ -676,7 +610,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         
         // Si es un día libre (isEmpty), saltarlo
         if (item.isEmpty) {
-          console.log(`  Día ${i + 1}: Libre (saltando)`)
           continue
         }
         
@@ -687,11 +620,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         
         // Verificar si existe el tipo de turno
         if (!item.tipoTurnoId) {
-          console.log(`  Día ${i + 1}: Sin tipoTurnoId, saltando`)
           continue
         }
-        
-        console.log(`  Día ${i + 1}: Asignando ${item.tipoTurno?.codigo} en ${nuevaFecha}`)
         
         const result = await asignarTurno({
           publicacionId: params.id,
@@ -740,18 +670,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     const todasLasAsignaciones = Array.from(asignaciones.values())
     const turnosUsuario = todasLasAsignaciones.filter(a => a.usuarioId === usuarioId)
     
-    // DEBUG: Logs para diagnosticar el problema de horas incorrectas
-    console.log(`🔍 MÉTRICAS - Usuario: ${usuarioId}`)
-    console.log(`  Total asignaciones en Map: ${todasLasAsignaciones.length}`)
-    console.log(`  Turnos filtrados para este usuario: ${turnosUsuario.length}`)
-    if (turnosUsuario.length > 0) {
-      console.log(`  Turnos:`, turnosUsuario.map(t => ({
-        codigo: t.tipoTurno?.codigo,
-        fecha: t.fecha,
-        usuarioId: t.usuarioId
-      })))
-    }
-    
     // Horas por tipo de turno según documento oficial
     const HORAS_TURNO: Record<string, number> = {
       'A': 9, 'AV': 8, 'OP': 12, 'OE': 12, 'B': 9,
@@ -777,8 +695,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       const horas = HORAS_TURNO[codigo] || 0
       const devolucion = DEVOLUCION_HORAS[codigo] || 0
       
-      console.log(`    Turno ${codigo}: ${horas}h trabajadas, ${devolucion}h devueltas`)
-      
       horasTrabajadas += horas
       horasDevueltas += devolucion
       
@@ -789,9 +705,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         horasSemanales[semana] += horas
       }
     })
-    
-    console.log(`  ✅ Total horas trabajadas: ${horasTrabajadas}h`)
-    console.log(`  ✅ Total horas devueltas: ${horasDevueltas}h`)
     
     // Validaciones DAN 11
     if (horasTrabajadas > 192) {
@@ -844,14 +757,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const fechaInicio = startOfMonth(new Date(publicacion.año, publicacion.mes - 1))
   const fechaFin = endOfMonth(fechaInicio)
   const dias = eachDayOfInterval({ start: fechaInicio, end: fechaFin })
-
-  // DEBUG: Log de estados en cada render
-  console.log('🔄 RENDER - Estados actuales:', {
-    selectedCells: selectedCells.length,
-    copiedSequence: copiedSequence.length,
-    mostrarBotones: selectedCells.length > 0,
-    mostrarBadgeCopia: copiedSequence.length > 0
-  })
 
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -969,9 +874,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                   <tbody>
                     {usuarios.map(usuario => {
                       const m = calcularMetricasUsuario(usuario.id)
-                      
-                      // DEBUG: Log del valor renderizado en UI
-                      console.log(`📊 RENDERIZANDO - ${usuario.nombre} ${usuario.apellido}: ${m.horasTrabajadas}h`)
                       
                       return (
                         <tr 
@@ -1207,28 +1109,16 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                       
                                       // Si NO hubo movimiento, es un CLICK (selección)
                                       if (!hasMoved) {
-                                        console.log('🔵 ═══ POINTER CLICK (sin movimiento) ═══')
-                                        console.log('  Fecha:', fecha)
-                                        console.log('  UsuarioId:', usuario.id)
-                                        console.log('  CellKey:', key)
-                                        console.log('  Tiene turno:', !!asignacion)
-                                        console.log('  Asignación:', asignacion ? asignacion.tipoTurno?.codigo : 'N/A')
-                                        
                                         // Verificar que no sea click en botón de eliminar
                                         const target = upEvent.target as HTMLElement
                                         if (target.tagName === 'BUTTON' || target.closest('button')) {
-                                          console.log('❌ Click en botón, abortando')
                                           return
                                         }
                                         
-                                        console.log('✅ Ejecutando acción (paste o selección)')
-                                        
                                         // Si hay secuencia copiada y la celda está vacía, mostrar preview
                                         if (canPaste) {
-                                          console.log('→ Modo PASTE')
                                           handlePastePreview(key)
                                         } else {
-                                          console.log('→ Modo SELECCIÓN')
                                           // Crear evento sintético de mouse para handleCellClick
                                           const syntheticEvent = {
                                             shiftKey: upEvent.shiftKey,
@@ -1240,8 +1130,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                           
                                           handleCellClick(key, fecha, usuario.id, syntheticEvent)
                                         }
-                                      } else {
-                                        console.log('🔶 Movimiento detectado (DRAG), no seleccionar')
                                       }
                                     }
                                     
@@ -1424,3 +1312,43 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   )
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════
+ * FEATURES IMPLEMENTADAS - ROL DE TURNOS (SGTHE)
+ * ═══════════════════════════════════════════════════════════
+ * 
+ * ✅ CP-007.1: Estructura base del rol
+ * ✅ CP-007.2: Grid del calendario  
+ * ✅ CP-007.3: Drag & Drop de turnos (optimistic updates)
+ * ✅ CP-007.4: CRUD de asignaciones
+ * ✅ CP-007.5: Multi-unidad (filtros por unidad)
+ * ✅ CP-007.6: Panel de Métricas HLM
+ * ✅ CP-007.7: Sistema de Copiar/Pegar Secuencias
+ *    - Selección simple (click)
+ *    - Selección de rango (Shift+Click)
+ *    - Copiar incluyendo días libres
+ *    - Vista previa antes de pegar
+ *    - Validaciones (turnos de viernes)
+ *    - Pegado respetando días libres
+ * 
+ * ⏳ PENDIENTE:
+ * - CP-007.8: Plantillas de patrones
+ * - CP-007.9: Continuar secuencia automáticamente
+ * - CP-007.10: Drag & Drop de funcionarios (reordenar)
+ * - CP-007.11: Exportación PDF/Excel
+ * - CP-007.12: Sistema de notificaciones
+ * - CP-007.13: Validaciones DAN 11 en tiempo real
+ * 
+ * FIXES CRÍTICOS RESUELTOS:
+ * - FIX 20: Conditional React Hooks en Vercel
+ * - FIX 21: Middleware optimizado (1.01 MB → 26.7 kB)
+ * - FIX 22: Loop infinito de redirecciones
+ * - FIX 23: Zona horaria en drag & drop
+ * - FIX 24: Métricas HLM cálculo incorrecto
+ * - FIX 25: Copiar días libres en secuencias
+ * - FIX 26: Desfase de fechas en Shift+Click
+ * - FIX 27: onPointerDown para permitir selección con turnos
+ * 
+ * ÚLTIMA ACTUALIZACIÓN: 2025-10-22
+ * ═══════════════════════════════════════════════════════════
+ */
