@@ -1182,39 +1182,78 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 <td 
                                   key={dia.toISOString()} 
                                   className="p-0"
-                                  onClick={(e) => {
-                                    console.log('🔵 ═══ TD CLICKED ═══')
-                                    console.log('  Target:', (e.target as HTMLElement).tagName)
-                                    console.log('  CurrentTarget:', (e.currentTarget as HTMLElement).tagName)
-                                    console.log('  Fecha:', fecha)
-                                    console.log('  UsuarioId:', usuario.id)
-                                    console.log('  CellKey:', key)
-                                    console.log('  Tiene turno:', !!asignacion)
-                                    console.log('  Asignación:', asignacion ? asignacion.tipoTurno?.codigo : 'N/A')
+                                  onPointerDown={(e) => {
+                                    // Guardar posición inicial del click
+                                    const startX = e.clientX
+                                    const startY = e.clientY
+                                    let hasMoved = false
                                     
-                                    // Verificar si es click en botón de eliminar
-                                    const target = e.target as HTMLElement
-                                    if (target.tagName === 'BUTTON' || target.closest('button')) {
-                                      console.log('❌ Click en botón, abortando')
-                                      return
+                                    // Función para detectar si hubo movimiento (drag)
+                                    const handlePointerMove = (moveEvent: PointerEvent) => {
+                                      const deltaX = Math.abs(moveEvent.clientX - startX)
+                                      const deltaY = Math.abs(moveEvent.clientY - startY)
+                                      
+                                      // Si se movió más de 5px, es un drag
+                                      if (deltaX > 5 || deltaY > 5) {
+                                        hasMoved = true
+                                      }
                                     }
                                     
-                                    console.log('✅ No es botón, continuando...')
-                                    
-                                    // Si hay secuencia copiada y la celda está vacía, mostrar preview
-                                    if (canPaste) {
-                                      console.log('→ Modo PASTE (celda vacía con secuencia copiada)')
-                                      handlePastePreview(key)
-                                    } else {
-                                      console.log('→ Modo SELECCIÓN, llamando handleCellClick...')
-                                      handleCellClick(key, fecha, usuario.id, e)
+                                    // Función cuando suelta el botón
+                                    const handlePointerUp = (upEvent: PointerEvent) => {
+                                      // Limpiar listeners
+                                      document.removeEventListener('pointermove', handlePointerMove)
+                                      document.removeEventListener('pointerup', handlePointerUp)
+                                      
+                                      // Si NO hubo movimiento, es un CLICK (selección)
+                                      if (!hasMoved) {
+                                        console.log('🔵 ═══ POINTER CLICK (sin movimiento) ═══')
+                                        console.log('  Fecha:', fecha)
+                                        console.log('  UsuarioId:', usuario.id)
+                                        console.log('  CellKey:', key)
+                                        console.log('  Tiene turno:', !!asignacion)
+                                        console.log('  Asignación:', asignacion ? asignacion.tipoTurno?.codigo : 'N/A')
+                                        
+                                        // Verificar que no sea click en botón de eliminar
+                                        const target = upEvent.target as HTMLElement
+                                        if (target.tagName === 'BUTTON' || target.closest('button')) {
+                                          console.log('❌ Click en botón, abortando')
+                                          return
+                                        }
+                                        
+                                        console.log('✅ Ejecutando acción (paste o selección)')
+                                        
+                                        // Si hay secuencia copiada y la celda está vacía, mostrar preview
+                                        if (canPaste) {
+                                          console.log('→ Modo PASTE')
+                                          handlePastePreview(key)
+                                        } else {
+                                          console.log('→ Modo SELECCIÓN')
+                                          // Crear evento sintético de mouse para handleCellClick
+                                          const syntheticEvent = {
+                                            shiftKey: upEvent.shiftKey,
+                                            ctrlKey: upEvent.ctrlKey,
+                                            metaKey: upEvent.metaKey,
+                                            preventDefault: () => {},
+                                            stopPropagation: () => {}
+                                          } as React.MouseEvent
+                                          
+                                          handleCellClick(key, fecha, usuario.id, syntheticEvent)
+                                        }
+                                      } else {
+                                        console.log('🔶 Movimiento detectado (DRAG), no seleccionar')
+                                      }
                                     }
+                                    
+                                    // Agregar listeners
+                                    document.addEventListener('pointermove', handlePointerMove)
+                                    document.addEventListener('pointerup', handlePointerUp)
                                   }}
                                 >
                                   <div
                                     className={cn(
                                       "relative",
-                                      isSelected && "ring-2 ring-blue-500 ring-inset z-10 bg-blue-50 dark:bg-blue-950/20",
+                                      isSelected && "ring-4 ring-blue-400 ring-inset z-20 bg-blue-100 dark:bg-blue-900/40 shadow-lg shadow-blue-500/20",
                                       canPaste && "hover:bg-green-50 dark:hover:bg-green-950/20"
                                     )}
                                   >
