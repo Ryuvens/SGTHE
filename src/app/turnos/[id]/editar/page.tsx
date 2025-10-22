@@ -130,45 +130,55 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       const visibleWidth = tableContainer.clientWidth
       const totalWidth = tableContainer.scrollWidth
       
-      // Calcular ancho real de celda basado en el DOM
+      // ✅ CALCULAR ANCHO REAL desde el DOM
       const firstDayCell = tableContainer.querySelector('[data-day]') as HTMLElement
-      const cellWidth = firstDayCell ? firstDayCell.offsetWidth : 45
+      let cellWidth = 45 // Fallback por si no encuentra la celda
       
-      console.log('📏 Medidas reales:', {
-        scrollLeft,
-        visibleWidth,
-        totalWidth,
-        cellWidthCalculado: cellWidth
-      })
+      if (firstDayCell) {
+        // Obtener ancho real incluyendo padding, border, margin
+        const rect = firstDayCell.getBoundingClientRect()
+        cellWidth = rect.width
+        console.log('📏 Ancho de celda REAL desde DOM:', {
+          offsetWidth: firstDayCell.offsetWidth,
+          boundingWidth: rect.width,
+          computedWidth: window.getComputedStyle(firstDayCell).width
+        })
+      } else {
+        console.warn('⚠️ No se encontró celda con [data-day]')
+      }
       
-      // Calcular día de inicio (ajustado)
+      console.log('📏 Medidas reales:')
+      console.log('  - scrollLeft:', scrollLeft)
+      console.log('  - visibleWidth:', visibleWidth)
+      console.log('  - totalWidth:', totalWidth)
+      console.log('  - cellWidth REAL:', cellWidth)
+      
+      // Calcular día de inicio
       const startDay = Math.max(1, Math.floor(scrollLeft / cellWidth) + 1)
       
-      // Calcular días completamente visibles
+      // Calcular días COMPLETAMENTE visibles
       const visibleCells = Math.floor(visibleWidth / cellWidth)
       
       // Calcular día final
       const endDay = Math.min(31, startDay + visibleCells - 1)
       
-      console.log('🔢 Cálculo detallado:', {
-        scrollLeft,
-        cellWidth,
-        division: scrollLeft / cellWidth,
-        floor: Math.floor(scrollLeft / cellWidth),
-        startDayCalculado: startDay,
-        visibleCells,
-        endDayCalculado: endDay
-      })
+      console.log('🔢 Cálculo detallado:')
+      console.log('  - scrollLeft:', scrollLeft)
+      console.log('  - cellWidth:', cellWidth)
+      console.log('  - division:', scrollLeft / cellWidth)
+      console.log('  - floor:', Math.floor(scrollLeft / cellWidth))
+      console.log('  - startDayCalculado:', startDay)
+      console.log('  - visibleCells:', visibleCells)
+      console.log('  - endDayCalculado:', endDay)
       
-      console.log('📊 SCROLL DETECTADO:', {
-        scrollLeft,
-        cellWidth,
-        visibleWidth,
-        startDay,
-        endDay,
-        visibleCells,
-        calculation: `floor(${scrollLeft} / ${cellWidth}) + 1 = ${startDay}`
-      })
+      console.log('📊 SCROLL DETECTADO:')
+      console.log('  - scrollLeft:', scrollLeft)
+      console.log('  - cellWidth:', cellWidth)
+      console.log('  - visibleWidth:', visibleWidth)
+      console.log('  - startDay:', startDay)
+      console.log('  - endDay:', endDay)
+      console.log('  - visibleCells:', visibleCells)
+      console.log('  - calculation:', `floor(${scrollLeft} / ${cellWidth}) + 1 = ${startDay}`)
       
       setVisibleDaysStart(startDay)
       setVisibleDaysEnd(endDay)
@@ -870,9 +880,15 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       return
     }
     
-    // Calcular ancho real de celda desde el DOM
+    // Calcular ancho real de celda desde el DOM usando getBoundingClientRect
     const firstDayCell = tableContainer.querySelector('[data-day]') as HTMLElement
-    const cellWidth = firstDayCell ? firstDayCell.offsetWidth : 45
+    let cellWidth = 45
+    
+    if (firstDayCell) {
+      const rect = firstDayCell.getBoundingClientRect()
+      cellWidth = rect.width
+    }
+    
     const scrollTo = (startDay - 1) * cellWidth
     
     console.log('🎯 Navegando a día:', { 
