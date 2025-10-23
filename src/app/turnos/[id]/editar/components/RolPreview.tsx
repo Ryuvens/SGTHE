@@ -67,17 +67,17 @@ export default function RolPreview({
 
           {/* Tabla del rol */}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300 text-sm">
+            <table className="w-full border-collapse border border-gray-300 text-xs">
               {/* Header con días */}
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-gray-300 p-2 text-left font-semibold">
+                  <th className="border border-gray-300 p-1 text-left font-semibold">
                     Funcionario
                   </th>
                   {diasDelMes.map((dia) => (
                     <th
                       key={dia.toISOString()}
-                      className="border border-gray-300 p-2 text-center min-w-[40px]"
+                      className="border border-gray-300 p-1 text-center min-w-[30px]"
                     >
                       <div className="text-xs">
                         {format(dia, 'EEE', { locale: es })}
@@ -94,7 +94,7 @@ export default function RolPreview({
               <tbody>
                 {funcionarios.map((func) => (
                   <tr key={func.id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 p-2 font-medium">
+                    <td className="border border-gray-300 p-1 text-xs font-medium">
                       <div>{func.nombre}</div>
                       <div className="text-xs text-muted-foreground">
                         {func.unidad}
@@ -123,7 +123,7 @@ export default function RolPreview({
                         >
                           {turnoDelDia && (
                             <div
-                              className="text-xs font-semibold rounded px-1 py-0.5"
+                              className="text-xs font-semibold rounded px-0.5 py-0"
                               style={{
                                 backgroundColor: (turnoDelDia.tipoTurno?.color || '#000') + '20',
                                 color: turnoDelDia.tipoTurno?.color || '#000'

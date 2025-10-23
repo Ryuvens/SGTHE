@@ -32,6 +32,7 @@ import { OpcionesAvanzadas } from '@/components/turnos/opciones-avanzadas'
 import { MiniMapNavigation } from '@/components/turnos/MiniMapNavigation'
 import { PositionIndicators } from '@/components/turnos/PositionIndicators'
 import RolPreview from './components/RolPreview'
+import './print.css'
 // import { StickyScrollBar } from '@/components/turnos/StickyScrollBar'
 
 import { 
@@ -1579,34 +1580,26 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       <RolPreview
         open={showPreview}
         onClose={() => setShowPreview(false)}
-        publicacion={null}
-        funcionarios={[
-          { id: 1, nombre: 'Claudia Alejandra', unidad: 'AV' },
-          { id: 2, nombre: 'Dino Orlando', unidad: 'OP' },
-          { id: 3, nombre: 'Alex Mauricio', unidad: 'OE' },
-          { id: 4, nombre: 'Patricio Danilo', unidad: 'B' },
-          { id: 5, nombre: 'Cristian Eduardo', unidad: 'CIC' },
-          { id: 6, nombre: 'Ivan', unidad: 'C' },
-          { id: 7, nombre: 'Ursula Mercedes', unidad: 'CV' },
-          { id: 8, nombre: 'Ruben Eliseo', unidad: 'D' }
-        ]}
-        turnos={[
-          // Ejemplos de turnos para Dino (id: 2)
-          { id: 1, funcionarioId: 2, fecha: '2025-10-01', tipoTurno: { codigo: 'D', color: '#f59e0b', nombre: 'Día' } },
-          { id: 2, funcionarioId: 2, fecha: '2025-10-02', tipoTurno: { codigo: 'N', color: '#3b82f6', nombre: 'Noche' } },
-          { id: 3, funcionarioId: 2, fecha: '2025-10-03', tipoTurno: { codigo: 'S', color: '#8b5cf6', nombre: 'Saliente' } },
-          { id: 4, funcionarioId: 2, fecha: '2025-10-05', tipoTurno: { codigo: 'D', color: '#f59e0b', nombre: 'Día' } },
-          { id: 5, funcionarioId: 2, fecha: '2025-10-06', tipoTurno: { codigo: 'N', color: '#3b82f6', nombre: 'Noche' } },
-          { id: 6, funcionarioId: 2, fecha: '2025-10-07', tipoTurno: { codigo: 'S', color: '#8b5cf6', nombre: 'Saliente' } },
-          // Ejemplos de turnos para Alex (id: 3)
-          { id: 7, funcionarioId: 3, fecha: '2025-10-02', tipoTurno: { codigo: 'D', color: '#f59e0b', nombre: 'Día' } },
-          { id: 8, funcionarioId: 3, fecha: '2025-10-03', tipoTurno: { codigo: 'N', color: '#3b82f6', nombre: 'Noche' } },
-          { id: 9, funcionarioId: 3, fecha: '2025-10-04', tipoTurno: { codigo: 'S', color: '#8b5cf6', nombre: 'Saliente' } },
-          { id: 10, funcionarioId: 3, fecha: '2025-10-07', tipoTurno: { codigo: 'D', color: '#f59e0b', nombre: 'Día' } },
-          { id: 11, funcionarioId: 3, fecha: '2025-10-08', tipoTurno: { codigo: 'N', color: '#3b82f6', nombre: 'Noche' } }
-        ]}
-        mes={new Date(2025, 9, 1)}
-        unidad="Centro de Control de Área Oceánico"
+        publicacion={publicacion}
+        funcionarios={usuarios.map((u) => ({
+          id: u.id,
+          nombre: u.nombre,
+          apellidoPaterno: u.apellidoPaterno || '',
+          apellidoMaterno: u.apellidoMaterno || '',
+          unidad: u.unidad || ''
+        }))}
+        turnos={Array.from(asignaciones.values()).map((asig) => ({
+          id: asig.id,
+          funcionarioId: asig.usuarioId,
+          fecha: asig.fecha,
+          tipoTurno: {
+            codigo: asig.tipoTurno?.codigo || '?',
+            color: asig.tipoTurno?.color || '#000',
+            nombre: asig.tipoTurno?.nombre || ''
+          }
+        }))}
+        mes={new Date(publicacion?.anio || 2025, (publicacion?.mes || 1) - 1, 1)}
+        unidad={publicacion?.unidad?.nombre || 'Centro de Control de Área Oceánico'}
       />
 
       {/* Drag overlay */}
