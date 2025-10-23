@@ -143,7 +143,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       // Obtener el contenedor scrolleable para calcular visibilidad
       const containerRect = tableContainer.getBoundingClientRect()
       
-      // Filtrar celdas que están AL MENOS 50% visibles
+      // Filtrar celdas visibles con ajuste para primer día
       const visibleCells = allDayCells.filter((cell) => {
         const cellRect = cell.getBoundingClientRect()
         const cellLeft = cellRect.left - containerRect.left
@@ -158,19 +158,43 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         // Porcentaje visible
         const percentVisible = (visibleWidth / cellWidth) * 100
         
-        // Log de debug (temporal)
-        const dayNumber = parseInt(cell.getAttribute('data-day') || '0')
-        if (dayNumber <= 18) {
-          console.log(`  Día ${dayNumber}: ${percentVisible.toFixed(1)}% visible`)
+        // Log detallado para las primeras 20 celdas
+        const dayNum = parseInt(cell.getAttribute('data-day') || '0')
+        if (dayNum <= 20) {
+          console.log(`  Día ${dayNum}: ${percentVisible.toFixed(1)}% visible (left: ${cellLeft.toFixed(1)}, right: ${cellRight.toFixed(1)})`)
         }
         
-        // Considerar visible si al menos el 50% está visible
-        return percentVisible >= 50
+        // Para el borde IZQUIERDO: requerir al menos 70% visible
+        // Para el borde DERECHO: permitir 50% visible
+        if (cellLeft < 0) {
+          // Celda cortada por la izquierda: necesita 70% visible
+          return percentVisible >= 70
+        } else if (cellRight > containerRect.width) {
+          // Celda cortada por la derecha: permitir 50% visible
+          return percentVisible >= 50
+        } else {
+          // Celda completamente dentro: siempre visible
+          return true
+        }
       })
       
       // Obtener primer y último día visible
       const firstVisibleCell = visibleCells[0]
       const lastVisibleCell = visibleCells[visibleCells.length - 1]
+      
+      console.log('🔍 Análisis de visibilidad:')
+      console.log('  - Total celdas con data-day:', allDayCells.length)
+      console.log('  - Celdas visibles detectadas:', visibleCells.length)
+      console.log('  - Primera celda visible:', firstVisibleCell?.getAttribute('data-day'))
+      console.log('  - Última celda visible:', lastVisibleCell?.getAttribute('data-day'))
+
+      // Verificar las primeras 10 celdas
+      allDayCells.slice(0, 10).forEach((cell) => {
+        const cellRect = cell.getBoundingClientRect()
+        const cellLeft = cellRect.left - containerRect.left
+        const dayNum = cell.getAttribute('data-day')
+        console.log(`  Día ${dayNum}: left=${cellLeft.toFixed(1)}px (${cellLeft < 0 ? 'OCULTO' : 'VISIBLE'})`)
+      })
       
       const startDay = firstVisibleCell 
         ? parseInt(firstVisibleCell.getAttribute('data-day') || '1')
