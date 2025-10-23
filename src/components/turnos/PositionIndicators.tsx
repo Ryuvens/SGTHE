@@ -34,12 +34,14 @@ export function PositionIndicators({
     <div className={cn("flex items-center justify-between gap-4 p-3 bg-muted/30 rounded-lg border", className)}>
       {/* Información de posición */}
       <div className="flex items-center gap-4 text-sm">
+        {/* OCULTO - Indicador de días visibles
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">
             Mostrando: Días {visibleDaysStart}-{visibleDaysEnd} de {totalDays}
           </span>
         </div>
+        */}
         
         <div className="h-4 w-px bg-border" />
         
