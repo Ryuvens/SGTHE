@@ -1580,8 +1580,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         open={showPreview}
         onClose={() => setShowPreview(false)}
         publicacion={publicacion}
-        funcionarios={funcionariosOrdenados}
-        turnos={turnosAsignados}
+        funcionarios={usuarios}
+        turnos={Array.from(asignaciones.values())}
         mes={new Date(publicacion?.anio || 2025, publicacion?.mes - 1 || 0, 1)}
         unidad={publicacion?.unidad?.nombre || 'Centro de Control de Área Oceánico'}
       />
