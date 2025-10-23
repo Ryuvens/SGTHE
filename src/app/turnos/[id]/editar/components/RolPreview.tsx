@@ -46,6 +46,118 @@ export default function RolPreview({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-auto">
+        {/* Estilos de impresión inline */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @media print {
+            /* Configuración de página Legal landscape */
+            @page {
+              size: legal landscape;
+              margin: 0.5cm;
+            }
+            
+            /* Ocultar todo excepto el diálogo */
+            body * {
+              visibility: hidden !important;
+            }
+            
+            [role="dialog"],
+            [role="dialog"] * {
+              visibility: visible !important;
+            }
+            
+            /* Posicionar el diálogo para impresión */
+            [role="dialog"] {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              max-width: none !important;
+              height: auto !important;
+              max-height: none !important;
+              overflow: visible !important;
+              transform: none !important;
+              margin: 0 !important;
+              padding: 0.5cm !important;
+            }
+            
+            /* Título centrado */
+            h1 {
+              font-size: 16px !important;
+              margin-bottom: 4px !important;
+              text-align: center !important;
+            }
+            
+            /* Subtítulo */
+            h1 + p {
+              font-size: 12px !important;
+              margin-bottom: 8px !important;
+              text-align: center !important;
+            }
+            
+            /* Tabla ajustada */
+            table {
+              width: 100% !important;
+              font-size: 7px !important;
+              border-collapse: collapse !important;
+              page-break-inside: avoid !important;
+              margin: 0 auto !important;
+            }
+            
+            /* Celdas compactas */
+            th, td {
+              padding: 1px 2px !important;
+              font-size: 7px !important;
+              border: 0.5px solid #000 !important;
+              line-height: 1.2 !important;
+            }
+            
+            /* Header de tabla */
+            thead th {
+              background-color: #f0f0f0 !important;
+              font-weight: bold !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            
+            /* Primera columna (nombres) un poco más ancha */
+            td:first-child,
+            th:first-child {
+              min-width: 80px !important;
+              max-width: 80px !important;
+              font-size: 6px !important;
+            }
+            
+            /* Celdas de días */
+            td:not(:first-child),
+            th:not(:first-child) {
+              text-align: center !important;
+              min-width: 18px !important;
+              max-width: 18px !important;
+            }
+            
+            /* Colores de turnos */
+            td div {
+              font-size: 7px !important;
+              padding: 1px !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            
+            /* Ocultar botones */
+            .print\\:hidden,
+            button {
+              display: none !important;
+            }
+            
+            /* Footer */
+            div:last-child {
+              font-size: 8px !important;
+              margin-top: 8px !important;
+              text-align: center !important;
+            }
+          }
+        `}} />
+
         <DialogHeader>
           <DialogTitle className="sr-only">Vista Previa del Rol</DialogTitle>
           <DialogDescription className="sr-only">
@@ -57,27 +169,27 @@ export default function RolPreview({
         <div className="print:p-8">
           {/* Encabezado */}
           <div className="text-center mb-8 space-y-2">
-            <h1 className="text-2xl font-bold uppercase">
+            <h1 className="text-2xl font-bold uppercase text-center print:text-base">
               Rol de Turno - {mesNombre}
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-lg text-muted-foreground text-center print:text-xs">
               {unidad || 'Centro de Control de Área Oceánico'}
             </p>
           </div>
 
           {/* Tabla del rol */}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300 text-xs">
+            <table className="w-full border-collapse border border-gray-300 text-[7px] print:text-[7px]">
               {/* Header con días */}
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-gray-300 p-1 text-left font-semibold">
+                  <th className="border border-gray-300 p-1 text-left font-semibold max-w-[100px] print:max-w-[80px] print:text-[6px]">
                     Funcionario
                   </th>
                   {diasDelMes.map((dia) => (
                     <th
                       key={dia.toISOString()}
-                      className="border border-gray-300 p-1 text-center min-w-[30px]"
+                      className="border border-gray-300 p-1 text-center min-w-[20px] print:p-0.5 print:text-[7px]"
                     >
                       <div className="text-xs">
                         {format(dia, 'EEE', { locale: es })}
@@ -94,7 +206,7 @@ export default function RolPreview({
               <tbody>
                 {funcionarios.map((func) => (
                   <tr key={func.id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 p-1 text-xs font-medium">
+                    <td className="border border-gray-300 p-1 text-xs font-medium max-w-[100px] print:max-w-[80px] print:text-[6px]">
                       <div>{func.nombre}</div>
                       <div className="text-xs text-muted-foreground">
                         {func.unidad}
@@ -119,7 +231,7 @@ export default function RolPreview({
                       return (
                         <td
                           key={dia.toISOString()}
-                          className="border border-gray-300 p-1 text-center"
+                          className="border border-gray-300 p-1 text-center print:p-0.5"
                         >
                           {turnoDelDia && (
                             <div
