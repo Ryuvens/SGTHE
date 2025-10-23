@@ -142,35 +142,48 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       
       // Calcular cellWidth real desde la primera celda
       const firstCell = allDayCells[0]
-      const cellWidth = firstCell.getBoundingClientRect().width
-      
-      // ✅ CALCULAR PRIMER DÍA VISIBLE usando scrollLeft directamente
-      // Agregar un pequeño margen de 10px para evitar contar días casi ocultos
-      const startDay = Math.max(1, Math.floor((scrollLeft + 10) / cellWidth) + 1)
-      
-      // ✅ CALCULAR DÍAS VISIBLES basado en ancho del viewport
-      const visibleCells = Math.floor(visibleWidth / cellWidth)
-      
+      const cellRect = firstCell.getBoundingClientRect()
+      const cellWidth = cellRect.width
+
+      // ✅ MEDIR ESPACIO REAL entre dos celdas consecutivas
+      let realCellWidth = cellWidth
+      if (allDayCells.length >= 2) {
+        const secondCell = allDayCells[1]
+        const secondRect = secondCell.getBoundingClientRect()
+        // Distancia entre el inicio de celda 1 y el inicio de celda 2
+        realCellWidth = secondRect.left - cellRect.left
+        console.log('📐 Ancho de celda + espacio:', {
+          cellWidth: cellWidth,
+          cellWidthConEspacio: realCellWidth,
+          diferencia: realCellWidth - cellWidth
+        })
+      }
+
+      // ✅ CALCULAR PRIMER DÍA VISIBLE
+      const startDay = Math.max(1, Math.floor((scrollLeft + 10) / realCellWidth) + 1)
+
+      // ✅ CALCULAR DÍAS VISIBLES con el ancho real (incluyendo espacios)
+      const visibleCells = Math.floor(visibleWidth / realCellWidth)
+
       // ✅ CALCULAR ÚLTIMO DÍA VISIBLE
       const endDay = Math.min(31, startDay + visibleCells - 1)
       
       console.log('📏 Medidas reales:')
       console.log('  - scrollLeft:', scrollLeft)
       console.log('  - visibleWidth:', visibleWidth)
-      console.log('  - cellWidth:', cellWidth)
+      console.log('  - cellWidth (solo celda):', cellWidth)
+      console.log('  - realCellWidth (celda+espacio):', realCellWidth)
       console.log('  - totalCells:', allDayCells.length)
-      
+
       console.log('🔢 Cálculo directo:')
-      console.log('  - (scrollLeft + 10) / cellWidth =', (scrollLeft + 10) / cellWidth)
-      console.log('  - Math.floor(...) + 1 =', startDay)
-      console.log('  - visibleCells:', visibleCells)
-      console.log('  - endDay:', endDay)
-      
-      console.log('📊 SCROLL DETECTADO:')
-      console.log('  - scrollLeft:', scrollLeft)
+      console.log('  - (scrollLeft + 10) / realCellWidth =', (scrollLeft + 10) / realCellWidth)
       console.log('  - startDay:', startDay)
-      console.log('  - endDay:', endDay)
+      console.log('  - visibleWidth / realCellWidth =', visibleWidth / realCellWidth)
       console.log('  - visibleCells:', visibleCells)
+      console.log('  - endDay:', endDay)
+
+      console.log('📊 RESULTADO FINAL:')
+      console.log('  - Mostrando: Días', startDay, '-', endDay, 'de 31')
       
       setVisibleDaysStart(startDay)
       setVisibleDaysEnd(endDay)
