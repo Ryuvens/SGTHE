@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Printer, X } from 'lucide-react'
 import { format } from 'date-fns'
@@ -29,6 +29,14 @@ export default function RolPreview({
     window.print()
   }
 
+  // Logs de debug temporal
+  console.log('🔍 RolPreview DEBUG:', {
+    totalFuncionarios: funcionarios.length,
+    totalTurnos: turnos.length,
+    primerosLimitadoTurnos: turnos.slice(0, 3),
+    estructura: turnos[0]
+  })
+
   const mesNombre = format(mes, 'MMMM yyyy', { locale: es })
   const diasDelMes = Array.from(
     { length: new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate() },
@@ -40,6 +48,9 @@ export default function RolPreview({
       <DialogContent className="max-w-[90vw] max-h-[90vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="sr-only">Vista Previa del Rol</DialogTitle>
+          <DialogDescription className="sr-only">
+            Vista previa del rol de turnos para impresión
+          </DialogDescription>
         </DialogHeader>
 
         {/* Contenedor para impresión */}
@@ -90,12 +101,20 @@ export default function RolPreview({
                       </div>
                     </td>
                     {diasDelMes.map((dia) => {
-                      const turnoDelDia = turnos.find(
-                        (t) =>
-                          t.funcionarioId === func.id &&
-                          format(new Date(t.fecha), 'yyyy-MM-dd') ===
-                            format(dia, 'yyyy-MM-dd')
-                      )
+                      const turnoDelDia = turnos.find((t) => {
+                        // Comparar funcionarioId
+                        const matchFuncionario = t.funcionarioId === func.id || 
+                                                t.funcionario?.id === func.id
+                        
+                        // Comparar fecha
+                        const fechaTurno = new Date(t.fecha)
+                        const matchFecha = 
+                          fechaTurno.getDate() === dia.getDate() &&
+                          fechaTurno.getMonth() === dia.getMonth() &&
+                          fechaTurno.getFullYear() === dia.getFullYear()
+                        
+                        return matchFuncionario && matchFecha
+                      })
                       
                       return (
                         <td
@@ -106,11 +125,11 @@ export default function RolPreview({
                             <div
                               className="text-xs font-semibold rounded px-1 py-0.5"
                               style={{
-                                backgroundColor: turnoDelDia.tipoTurno.color + '20',
-                                color: turnoDelDia.tipoTurno.color
+                                backgroundColor: (turnoDelDia.tipoTurno?.color || '#000') + '20',
+                                color: turnoDelDia.tipoTurno?.color || '#000'
                               }}
                             >
-                              {turnoDelDia.tipoTurno.codigo}
+                              {turnoDelDia.tipoTurno?.codigo || '?'}
                             </div>
                           )}
                         </td>
