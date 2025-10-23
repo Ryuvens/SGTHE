@@ -1316,11 +1316,11 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           <thead>
                             <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
                               {/* Columna Iniciales */}
-                              <th className="text-center p-2 font-medium sticky left-0 bg-background z-30 w-[64px] border-r border-border shadow-sm">
+                              <th className="sticky left-0 z-30 bg-white border-r w-[64px] p-2 text-center font-medium shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
                                 Inic.
                               </th>
                               {/* Columna Funcionario */}
-                              <th className="text-left p-2 font-medium sticky left-[64px] bg-background z-30 w-[200px] border-r border-border shadow-sm">
+                              <th className="sticky left-[64px] z-30 bg-white border-r w-[200px] p-2 text-left font-medium shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
                                 Funcionario
                               </th>
                           {dias.map((dia, index) => {
@@ -1331,7 +1331,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 key={dia.toISOString()}
                                 data-day={index + 1}
                                 className={cn(
-                                  "p-1 text-center text-xs min-w-[45px] bg-background",
+                                  "p-1 text-center text-xs w-[50px] bg-background",
                                   esFinDeSemana && "bg-muted/50"
                                 )}
                               >
@@ -1346,13 +1346,13 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         {usuarios.map(usuario => (
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
                             {/* Columna Iniciales */}
-                            <td className="p-2 text-center font-bold sticky left-0 bg-background z-10 w-[64px] border-r border-border shadow-sm">
+                            <td className="sticky left-0 z-10 bg-white border-r w-[64px] p-2 text-center font-bold shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
                               <div className="text-xs font-mono">
                                 {usuario.abreviatura?.codigo || obtenerIniciales(usuario.nombre, usuario.apellidoPaterno, usuario.apellidoMaterno)}
                               </div>
                             </td>
                             {/* Columna Funcionario */}
-                            <td className="p-2 font-medium sticky left-[64px] bg-background z-10 w-[200px] border-r border-border shadow-sm">
+                            <td className="sticky left-[64px] z-10 bg-white border-r w-[200px] p-2 font-medium shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
                                 {usuario.abreviatura?.codigo && (
@@ -1374,7 +1374,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               return (
                                 <td 
                                   key={dia.toISOString()} 
-                                  className="p-0"
+                                  className="p-0 w-[50px]"
                                   onPointerDown={(e) => {
                                     // Guardar posición inicial del click
                                     const startX = e.clientX
