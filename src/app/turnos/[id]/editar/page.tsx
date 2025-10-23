@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { format, eachDayOfInterval, getDay, startOfMonth, endOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X, Copy, Clipboard, Check } from 'lucide-react'
+import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X, Copy, Clipboard, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -68,6 +68,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const [activeDragData, setActiveDragData] = useState<any>(null)
   const [renderVersion, setRenderVersion] = useState(0)
   const [mostrarMetricas, setMostrarMetricas] = useState(true)
+  const [sidebarColapsado, setSidebarColapsado] = useState(false)
   
   // Estados para copiar/pegar secuencias
   const [selectedCells, setSelectedCells] = useState<string[]>([]) // Keys de celdas seleccionadas
@@ -1156,42 +1157,72 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           </Card>
         )}
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className={`grid gap-6 ${sidebarColapsado ? 'grid-cols-1' : 'grid-cols-12'}`}>
           {/* Sidebar con tipos de turno */}
-          <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Tipos de Turno</CardTitle>
-                <CardDescription>Arrastra al calendario para asignar</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px] pr-4">
-                  <div className="space-y-2">
-                    {tiposTurno.length === 0 ? (
-                      <div className="text-sm text-muted-foreground text-center py-8">
-                        No hay tipos de turno disponibles
-                      </div>
-                    ) : (
-                      tiposTurno.map(turno => (
-                        <DraggableTurnoType
-                          key={turno.id}
-                          id={turno.id}
-                          codigo={turno.codigo}
-                          color={turno.color || '#6B7280'}
-                          nombre={turno.nombre}
-                          horaInicio={turno.horaInicio}
-                          horaFin={turno.horaFin}
-                        />
-                      ))
+          <div className={sidebarColapsado ? 'w-14' : 'col-span-3'}>
+            <Card className={cn(
+              "transition-all duration-300",
+              sidebarColapsado && "w-14"
+            )}>
+              <CardHeader className={cn(
+                "transition-all duration-300",
+                sidebarColapsado ? "p-2" : "p-6"
+              )}>
+                <div className="flex items-center justify-between">
+                  {!sidebarColapsado && (
+                    <div>
+                      <CardTitle className="text-base">Tipos de Turno</CardTitle>
+                      <CardDescription>Arrastra al calendario para asignar</CardDescription>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarColapsado(!sidebarColapsado)}
+                    className={cn(
+                      "h-8 w-8 p-0",
+                      sidebarColapsado && "w-full"
                     )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
+                    title={sidebarColapsado ? "Expandir" : "Colapsar"}
+                  >
+                    {sidebarColapsado ? (
+                      <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <ChevronLeft className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              {!sidebarColapsado && (
+                <CardContent>
+                  <ScrollArea className="h-[600px] pr-4">
+                    <div className="space-y-2">
+                      {tiposTurno.length === 0 ? (
+                        <div className="text-sm text-muted-foreground text-center py-8">
+                          No hay tipos de turno disponibles
+                        </div>
+                      ) : (
+                        tiposTurno.map(turno => (
+                          <DraggableTurnoType
+                            key={turno.id}
+                            id={turno.id}
+                            codigo={turno.codigo}
+                            color={turno.color || '#6B7280'}
+                            nombre={turno.nombre}
+                            horaInicio={turno.horaInicio}
+                            horaFin={turno.horaFin}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              )}
             </Card>
           </div>
 
           {/* Calendario editable */}
-          <div className="col-span-9">
+          <div className={sidebarColapsado ? 'col-span-11' : 'col-span-9'}>
             <Card>
               <CardHeader>
                 <CardTitle>Calendario de Asignación</CardTitle>
