@@ -942,6 +942,18 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setShowPreview(true)
   }
 
+  // Función para obtener iniciales
+  const obtenerIniciales = (
+    nombre?: string, 
+    apellidoPaterno?: string, 
+    apellidoMaterno?: string
+  ): string => {
+    const inicial1 = nombre?.charAt(0).toUpperCase() || ''
+    const inicial2 = apellidoPaterno?.charAt(0).toUpperCase() || ''
+    const inicial3 = apellidoMaterno?.charAt(0).toUpperCase() || ''
+    return `${inicial1}${inicial2}${inicial3}`
+  }
+
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6 p-8">
@@ -1299,12 +1311,17 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     <div className="relative max-h-[600px] overflow-y-auto">
                       <div 
                         ref={tableContainerRef}
-                        className="overflow-x-auto"
+                        className="relative overflow-x-auto"
                       >
                         <table className="w-full border-collapse text-sm">
                           <thead>
                             <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
-                              <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px] border-r border-border shadow-sm">
+                              {/* Columna Iniciales */}
+                              <th className="text-center p-2 font-medium sticky left-0 bg-background z-30 w-16 border-r border-border shadow-sm">
+                                Inic.
+                              </th>
+                              {/* Columna Funcionario */}
+                              <th className="text-left p-2 font-medium sticky left-16 bg-background z-30 min-w-[140px] border-r border-border shadow-sm">
                                 Funcionario
                               </th>
                           {dias.map((dia, index) => {
@@ -1329,7 +1346,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       <tbody>
                         {usuarios.map(usuario => (
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
-                            <td className="p-2 font-medium sticky left-0 bg-background z-10 border-r border-border shadow-sm">
+                            {/* Columna Iniciales */}
+                            <td className="p-2 text-center font-bold sticky left-0 bg-background z-10 w-16 border-r border-border shadow-sm">
+                              <div className="text-xs">
+                                {obtenerIniciales(usuario.nombre, usuario.apellidoPaterno, usuario.apellidoMaterno)}
+                              </div>
+                            </td>
+                            {/* Columna Funcionario */}
+                            <td className="p-2 font-medium sticky left-16 bg-background z-10 border-r border-border shadow-sm">
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
                                 {usuario.abreviatura?.codigo && (
