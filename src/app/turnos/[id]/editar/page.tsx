@@ -1579,11 +1579,34 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       <RolPreview
         open={showPreview}
         onClose={() => setShowPreview(false)}
-        publicacion={publicacion}
-        funcionarios={usuarios}
-        turnos={publicacion?.dotaciones?.flatMap(d => d.turnos || []) || []}
-        mes={new Date(publicacion?.anio || 2025, publicacion?.mes - 1 || 0, 1)}
-        unidad={publicacion?.unidad?.nombre || 'Centro de Control de Área Oceánico'}
+        publicacion={null}
+        funcionarios={[
+          { id: 1, nombre: 'Claudia Alejandra', unidad: 'AV' },
+          { id: 2, nombre: 'Dino Orlando', unidad: 'OP' },
+          { id: 3, nombre: 'Alex Mauricio', unidad: 'OE' },
+          { id: 4, nombre: 'Patricio Danilo', unidad: 'B' },
+          { id: 5, nombre: 'Cristian Eduardo', unidad: 'CIC' },
+          { id: 6, nombre: 'Ivan', unidad: 'C' },
+          { id: 7, nombre: 'Ursula Mercedes', unidad: 'CV' },
+          { id: 8, nombre: 'Ruben Eliseo', unidad: 'D' }
+        ]}
+        turnos={[
+          // Ejemplos de turnos para Dino (id: 2)
+          { id: 1, funcionarioId: 2, fecha: '2025-10-01', tipoTurno: { codigo: 'D', color: '#f59e0b', nombre: 'Día' } },
+          { id: 2, funcionarioId: 2, fecha: '2025-10-02', tipoTurno: { codigo: 'N', color: '#3b82f6', nombre: 'Noche' } },
+          { id: 3, funcionarioId: 2, fecha: '2025-10-03', tipoTurno: { codigo: 'S', color: '#8b5cf6', nombre: 'Saliente' } },
+          { id: 4, funcionarioId: 2, fecha: '2025-10-05', tipoTurno: { codigo: 'D', color: '#f59e0b', nombre: 'Día' } },
+          { id: 5, funcionarioId: 2, fecha: '2025-10-06', tipoTurno: { codigo: 'N', color: '#3b82f6', nombre: 'Noche' } },
+          { id: 6, funcionarioId: 2, fecha: '2025-10-07', tipoTurno: { codigo: 'S', color: '#8b5cf6', nombre: 'Saliente' } },
+          // Ejemplos de turnos para Alex (id: 3)
+          { id: 7, funcionarioId: 3, fecha: '2025-10-02', tipoTurno: { codigo: 'D', color: '#f59e0b', nombre: 'Día' } },
+          { id: 8, funcionarioId: 3, fecha: '2025-10-03', tipoTurno: { codigo: 'N', color: '#3b82f6', nombre: 'Noche' } },
+          { id: 9, funcionarioId: 3, fecha: '2025-10-04', tipoTurno: { codigo: 'S', color: '#8b5cf6', nombre: 'Saliente' } },
+          { id: 10, funcionarioId: 3, fecha: '2025-10-07', tipoTurno: { codigo: 'D', color: '#f59e0b', nombre: 'Día' } },
+          { id: 11, funcionarioId: 3, fecha: '2025-10-08', tipoTurno: { codigo: 'N', color: '#3b82f6', nombre: 'Noche' } }
+        ]}
+        mes={new Date(2025, 9, 1)}
+        unidad="Centro de Control de Área Oceánico"
       />
 
       {/* Drag overlay */}
