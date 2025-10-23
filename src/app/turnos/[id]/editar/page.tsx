@@ -140,88 +140,37 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         return
       }
       
-      // Obtener el contenedor scrolleable para calcular visibilidad
-      const containerRect = tableContainer.getBoundingClientRect()
+      // Calcular cellWidth real desde la primera celda
+      const firstCell = allDayCells[0]
+      const cellWidth = firstCell.getBoundingClientRect().width
       
-      // Filtrar celdas visibles con ajuste para primer día
-      const visibleCells = allDayCells.filter((cell) => {
-        const cellRect = cell.getBoundingClientRect()
-        const cellLeft = cellRect.left - containerRect.left
-        const cellRight = cellRect.right - containerRect.left
-        const cellWidth = cellRect.width
-        
-        // Calcular cuánto de la celda está visible
-        const visibleLeft = Math.max(0, cellLeft)
-        const visibleRight = Math.min(containerRect.width, cellRight)
-        const visibleWidth = Math.max(0, visibleRight - visibleLeft)
-        
-        // Porcentaje visible
-        const percentVisible = (visibleWidth / cellWidth) * 100
-        
-        // Log detallado para las primeras 20 celdas
-        const dayNum = parseInt(cell.getAttribute('data-day') || '0')
-        if (dayNum <= 20) {
-          console.log(`  Día ${dayNum}: ${percentVisible.toFixed(1)}% visible (left: ${cellLeft.toFixed(1)}, right: ${cellRight.toFixed(1)})`)
-        }
-        
-        // Para el borde IZQUIERDO: requerir al menos 70% visible
-        // Para el borde DERECHO: permitir 50% visible
-        if (cellLeft < 0) {
-          // Celda cortada por la izquierda: necesita 70% visible
-          return percentVisible >= 70
-        } else if (cellRight > containerRect.width) {
-          // Celda cortada por la derecha: permitir 50% visible
-          return percentVisible >= 50
-        } else {
-          // Celda completamente dentro: siempre visible
-          return true
-        }
-      })
+      // ✅ CALCULAR PRIMER DÍA VISIBLE usando scrollLeft directamente
+      // Agregar un pequeño margen de 10px para evitar contar días casi ocultos
+      const startDay = Math.max(1, Math.floor((scrollLeft + 10) / cellWidth) + 1)
       
-      // Obtener primer y último día visible
-      const firstVisibleCell = visibleCells[0]
-      const lastVisibleCell = visibleCells[visibleCells.length - 1]
+      // ✅ CALCULAR DÍAS VISIBLES basado en ancho del viewport
+      const visibleCells = Math.floor(visibleWidth / cellWidth)
       
-      console.log('🔍 Análisis de visibilidad:')
-      console.log('  - Total celdas con data-day:', allDayCells.length)
-      console.log('  - Celdas visibles detectadas:', visibleCells.length)
-      console.log('  - Primera celda visible:', firstVisibleCell?.getAttribute('data-day'))
-      console.log('  - Última celda visible:', lastVisibleCell?.getAttribute('data-day'))
-
-      // Verificar las primeras 10 celdas
-      allDayCells.slice(0, 10).forEach((cell) => {
-        const cellRect = cell.getBoundingClientRect()
-        const cellLeft = cellRect.left - containerRect.left
-        const dayNum = cell.getAttribute('data-day')
-        console.log(`  Día ${dayNum}: left=${cellLeft.toFixed(1)}px (${cellLeft < 0 ? 'OCULTO' : 'VISIBLE'})`)
-      })
-      
-      const startDay = firstVisibleCell 
-        ? parseInt(firstVisibleCell.getAttribute('data-day') || '1')
-        : 1
-        
-      const endDay = lastVisibleCell
-        ? parseInt(lastVisibleCell.getAttribute('data-day') || '31')
-        : 31
+      // ✅ CALCULAR ÚLTIMO DÍA VISIBLE
+      const endDay = Math.min(31, startDay + visibleCells - 1)
       
       console.log('📏 Medidas reales:')
       console.log('  - scrollLeft:', scrollLeft)
       console.log('  - visibleWidth:', visibleWidth)
-      console.log('  - totalWidth:', totalWidth)
+      console.log('  - cellWidth:', cellWidth)
       console.log('  - totalCells:', allDayCells.length)
-      console.log('  - visibleCells:', visibleCells.length)
       
-      console.log('🔢 Cálculo desde DOM:')
-      console.log('  - firstVisibleCell:', firstVisibleCell?.getAttribute('data-day'))
-      console.log('  - lastVisibleCell:', lastVisibleCell?.getAttribute('data-day'))
-      console.log('  - startDay:', startDay)
+      console.log('🔢 Cálculo directo:')
+      console.log('  - (scrollLeft + 10) / cellWidth =', (scrollLeft + 10) / cellWidth)
+      console.log('  - Math.floor(...) + 1 =', startDay)
+      console.log('  - visibleCells:', visibleCells)
       console.log('  - endDay:', endDay)
       
       console.log('📊 SCROLL DETECTADO:')
       console.log('  - scrollLeft:', scrollLeft)
       console.log('  - startDay:', startDay)
       console.log('  - endDay:', endDay)
-      console.log('  - visibleCells:', visibleCells.length)
+      console.log('  - visibleCells:', visibleCells)
       
       setVisibleDaysStart(startDay)
       setVisibleDaysEnd(endDay)
