@@ -143,14 +143,29 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       // Obtener el contenedor scrolleable para calcular visibilidad
       const containerRect = tableContainer.getBoundingClientRect()
       
-      // Filtrar celdas que están COMPLETAMENTE visibles
+      // Filtrar celdas que están AL MENOS 50% visibles
       const visibleCells = allDayCells.filter((cell) => {
         const cellRect = cell.getBoundingClientRect()
         const cellLeft = cellRect.left - containerRect.left
         const cellRight = cellRect.right - containerRect.left
+        const cellWidth = cellRect.width
         
-        // Una celda está visible si su inicio y fin están dentro del viewport
-        return cellLeft >= 0 && cellRight <= containerRect.width
+        // Calcular cuánto de la celda está visible
+        const visibleLeft = Math.max(0, cellLeft)
+        const visibleRight = Math.min(containerRect.width, cellRight)
+        const visibleWidth = Math.max(0, visibleRight - visibleLeft)
+        
+        // Porcentaje visible
+        const percentVisible = (visibleWidth / cellWidth) * 100
+        
+        // Log de debug (temporal)
+        const dayNumber = parseInt(cell.getAttribute('data-day') || '0')
+        if (dayNumber <= 18) {
+          console.log(`  Día ${dayNumber}: ${percentVisible.toFixed(1)}% visible`)
+        }
+        
+        // Considerar visible si al menos el 50% está visible
+        return percentVisible >= 50
       })
       
       // Obtener primer y último día visible
