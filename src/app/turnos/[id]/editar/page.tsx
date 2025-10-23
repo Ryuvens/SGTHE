@@ -1308,10 +1308,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       className="mb-4"
                     />
 
-                    <div className="relative max-h-[600px] overflow-y-auto">
+                    <div className="relative max-h-[600px]">
                       <div 
                         ref={tableContainerRef}
-                        className="relative overflow-x-auto"
+                        className="relative overflow-auto"
                       >
                         <table className="w-full border-collapse text-sm">
                           <thead>
@@ -1348,8 +1348,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
                             {/* Columna Iniciales */}
                             <td className="p-2 text-center font-bold sticky left-0 bg-background z-10 w-16 border-r border-border shadow-sm">
-                              <div className="text-xs">
-                                {obtenerIniciales(usuario.nombre, usuario.apellidoPaterno, usuario.apellidoMaterno)}
+                              <div className="text-xs font-mono">
+                                {usuario.abreviatura?.codigo || obtenerIniciales(usuario.nombre, usuario.apellidoPaterno, usuario.apellidoMaterno)}
                               </div>
                             </td>
                             {/* Columna Funcionario */}
