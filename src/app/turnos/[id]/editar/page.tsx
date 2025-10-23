@@ -31,6 +31,7 @@ import {
 import { OpcionesAvanzadas } from '@/components/turnos/opciones-avanzadas'
 import { MiniMapNavigation } from '@/components/turnos/MiniMapNavigation'
 import { PositionIndicators } from '@/components/turnos/PositionIndicators'
+import RolPreview from './components/RolPreview'
 // import { StickyScrollBar } from '@/components/turnos/StickyScrollBar'
 
 import { 
@@ -69,6 +70,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const [renderVersion, setRenderVersion] = useState(0)
   const [mostrarMetricas, setMostrarMetricas] = useState(true)
   const [sidebarColapsado, setSidebarColapsado] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   
   // Estados para copiar/pegar secuencias
   const [selectedCells, setSelectedCells] = useState<string[]>([]) // Keys de celdas seleccionadas
@@ -935,6 +937,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     handleNavigateToDay(todayStart, totalDays)
   }
 
+  const handlePreview = () => {
+    setShowPreview(true)
+  }
+
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6 p-8">
@@ -1275,6 +1281,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         })
                         handleNavigateToToday(new Date().getDate(), dias.length)
                       }}
+                      onPreview={handlePreview}
                       className="mb-4"
                     />
 
@@ -1567,6 +1574,17 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de vista previa */}
+      <RolPreview
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        publicacion={publicacion}
+        funcionarios={funcionariosOrdenados}
+        turnos={turnosAsignados}
+        mes={new Date(publicacion?.anio || 2025, publicacion?.mes - 1 || 0, 1)}
+        unidad={publicacion?.unidad?.nombre || 'Centro de Control de Área Oceánico'}
+      />
 
       {/* Drag overlay */}
       <DragOverlay>

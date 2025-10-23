@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +13,7 @@ interface PositionIndicatorsProps {
   onNavigatePrevWeek: () => void
   onNavigateNextWeek: () => void
   onNavigateToToday: () => void
+  onPreview: () => void
   className?: string
 }
 
@@ -25,6 +26,7 @@ export function PositionIndicators({
   onNavigatePrevWeek,
   onNavigateNextWeek,
   onNavigateToToday,
+  onPreview,
   className
 }: PositionIndicatorsProps) {
   const monthName = currentMonth.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
@@ -92,6 +94,16 @@ export function PositionIndicators({
         >
           Siguiente semana
           <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onPreview}
+          className="h-8 ml-auto"
+        >
+          <Eye className="h-4 w-4 mr-1" />
+          Vista Previa
         </Button>
       </div>
     </div>
