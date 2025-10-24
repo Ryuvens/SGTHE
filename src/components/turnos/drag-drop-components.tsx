@@ -156,7 +156,7 @@ export function DraggableAsignacion({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="relative group">
+    <div ref={setNodeRef} style={style} className="relative group z-0">
       {/* Botón eliminar en la esquina */}
       <button
         onClick={(e) => {
@@ -183,7 +183,7 @@ export function DraggableAsignacion({
           console.log('🔶 TURNO CLICK - Propagando evento para selección')
           // NO usar e.stopPropagation() para permitir selección
         }}
-        className="rounded px-1.5 py-1.5 text-xs font-semibold text-center cursor-move hover:ring-2 hover:ring-primary hover:ring-offset-1 transition-all"
+        className="rounded px-1.5 py-1.5 text-xs font-semibold text-center cursor-move hover:ring-2 hover:ring-primary hover:ring-offset-1 transition-all z-0"
         style={{ 
           backgroundColor: asignacion.tipoTurno?.color || '#6B7280',
           color: 'white'

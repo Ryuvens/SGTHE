@@ -1314,10 +1314,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     >
                         <table className="w-full border-collapse text-sm">
                           <thead>
-                            <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
+                            <tr className="sticky top-0 z-30 bg-background border-b shadow-sm">
                               {/* Columna Iniciales */}
                               <th 
-                                className="sticky left-0 z-30 w-[64px] p-2 text-center border-r"
+                                className="sticky left-0 z-40 w-[64px] p-2 text-center border-r"
                                 style={{ 
                                   backgroundColor: '#ffffff',
                                   boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
@@ -1327,7 +1327,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               </th>
                               {/* Columna Funcionario */}
                               <th 
-                                className="sticky left-[64px] z-30 w-[200px] p-2 border-r"
+                                className="sticky left-[64px] z-40 w-[200px] p-2 border-r"
                                 style={{ 
                                   backgroundColor: '#ffffff',
                                   boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
@@ -1359,7 +1359,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
                             {/* Columna Iniciales */}
                             <td 
-                              className="sticky left-0 z-10 w-[64px] p-2 text-center border-r"
+                              className="sticky left-0 z-20 w-[64px] p-2 text-center border-r"
                               style={{ 
                                 backgroundColor: '#ffffff',
                                 boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
@@ -1371,7 +1371,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                             </td>
                             {/* Columna Funcionario */}
                             <td 
-                              className="sticky left-[64px] z-10 w-[200px] p-2 border-r"
+                              className="sticky left-[64px] z-20 w-[200px] p-2 border-r"
                               style={{ 
                                 backgroundColor: '#ffffff',
                                 boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
@@ -1398,7 +1398,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               return (
                                 <td 
                                   key={dia.toISOString()} 
-                                  className="p-0 w-[50px]"
+                                  className="p-0 w-[50px] relative z-0"
                                   onPointerDown={(e) => {
                                     // Guardar posición inicial del click
                                     const startX = e.clientX
