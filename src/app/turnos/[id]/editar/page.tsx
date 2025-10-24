@@ -1310,17 +1310,17 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
                     <div 
                       ref={tableContainerRef}
-                      className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]"
+                      className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]"
                     >
                         <table className="w-full border-collapse text-sm">
                           <thead>
                             <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
                               {/* Columna Iniciales */}
-                              <th className="sticky left-0 z-30 bg-white border-r w-[64px] p-2 text-center font-medium shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
+                              <th className="sticky left-0 z-30 !bg-white box-shadow-[inset_0_0_0_1000px_white] w-[64px] p-2 text-center border-r shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
                                 Inic.
                               </th>
                               {/* Columna Funcionario */}
-                              <th className="sticky left-[64px] z-30 bg-white border-r w-[200px] p-2 text-left font-medium shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
+                              <th className="sticky left-[64px] z-30 !bg-white box-shadow-[inset_0_0_0_1000px_white] w-[200px] p-2 border-r shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
                                 Funcionario
                               </th>
                           {dias.map((dia, index) => {
@@ -1332,7 +1332,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 data-day={index + 1}
                                 className={cn(
                                   "p-1 text-center text-xs w-[50px] bg-background",
-                                  esFinDeSemana && "bg-muted/50"
+                                  esFinDeSemana && "bg-muted/50",
+                                  index === 0 && "ml-[264px]"
                                 )}
                               >
                                 <div className="font-normal capitalize">{format(dia, 'EEE', { locale: es })}</div>
@@ -1346,13 +1347,13 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         {usuarios.map(usuario => (
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
                             {/* Columna Iniciales */}
-                            <td className="sticky left-0 z-10 bg-white border-r w-[64px] p-2 text-center font-bold shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
+                            <td className="sticky left-0 z-10 !bg-white box-shadow-[inset_0_0_0_1000px_white] w-[64px] p-2 text-center border-r shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
                               <div className="text-xs font-mono">
                                 {usuario.abreviatura?.codigo || obtenerIniciales(usuario.nombre, usuario.apellidoPaterno, usuario.apellidoMaterno)}
                               </div>
                             </td>
                             {/* Columna Funcionario */}
-                            <td className="sticky left-[64px] z-10 bg-white border-r w-[200px] p-2 font-medium shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
+                            <td className="sticky left-[64px] z-10 !bg-white box-shadow-[inset_0_0_0_1000px_white] w-[200px] p-2 border-r shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
                                 {usuario.abreviatura?.codigo && (
