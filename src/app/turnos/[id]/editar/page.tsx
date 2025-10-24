@@ -1313,25 +1313,24 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]"
                     >
                         <table className="w-full border-collapse text-sm">
+                          <colgroup>
+                            <col className="w-[64px]" />     {/* Inic. */}
+                            <col className="w-[200px]" />    {/* Funcionario */}
+                            {dias.map((_, index) => (
+                              <col key={index} className="w-[50px]" />  {/* Días */}
+                            ))}
+                          </colgroup>
                           <thead>
                             <tr className="sticky top-0 z-30 bg-background border-b shadow-sm">
                               {/* Columna Iniciales */}
                               <th 
-                                className="sticky left-0 z-40 w-[64px] p-2 text-center border-r"
-                                style={{ 
-                                  backgroundColor: '#ffffff',
-                                  boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
-                                }}
+                                className="sticky left-0 z-40 p-2 text-center border-r bg-white"
                               >
                                 Inic.
                               </th>
                               {/* Columna Funcionario */}
                               <th 
-                                className="sticky left-[64px] z-40 w-[200px] p-2 border-r"
-                                style={{ 
-                                  backgroundColor: '#ffffff',
-                                  boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
-                                }}
+                                className="sticky left-[64px] z-40 p-2 border-r bg-white"
                               >
                                 Funcionario
                               </th>
@@ -1359,11 +1358,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
                             {/* Columna Iniciales */}
                             <td 
-                              className="sticky left-0 z-20 w-[64px] p-2 text-center border-r"
-                              style={{ 
-                                backgroundColor: '#ffffff',
-                                boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
-                              }}
+                              className="sticky left-0 z-20 p-2 text-center border-r bg-white"
                             >
                               <div className="text-xs font-mono">
                                 {usuario.abreviatura?.codigo || obtenerIniciales(usuario.nombre, usuario.apellidoPaterno, usuario.apellidoMaterno)}
@@ -1371,11 +1366,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                             </td>
                             {/* Columna Funcionario */}
                             <td 
-                              className="sticky left-[64px] z-20 w-[200px] p-2 border-r"
-                              style={{ 
-                                backgroundColor: '#ffffff',
-                                boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
-                              }}
+                              className="sticky left-[64px] z-20 p-2 border-r bg-white"
                             >
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
@@ -1398,7 +1389,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               return (
                                 <td 
                                   key={dia.toISOString()} 
-                                  className="p-0 w-[50px] relative z-0"
+                                  className="p-1 border-r text-center relative z-0"
                                   onPointerDown={(e) => {
                                     // Guardar posición inicial del click
                                     const startX = e.clientX
