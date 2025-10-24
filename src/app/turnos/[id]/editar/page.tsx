@@ -1316,11 +1316,23 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           <thead>
                             <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
                               {/* Columna Iniciales */}
-                              <th className="sticky left-0 z-30 !bg-white box-shadow-[inset_0_0_0_1000px_white] w-[64px] p-2 text-center border-r shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
+                              <th 
+                                className="sticky left-0 z-30 w-[64px] p-2 text-center border-r"
+                                style={{ 
+                                  backgroundColor: '#ffffff',
+                                  boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
+                                }}
+                              >
                                 Inic.
                               </th>
                               {/* Columna Funcionario */}
-                              <th className="sticky left-[64px] z-30 !bg-white box-shadow-[inset_0_0_0_1000px_white] w-[200px] p-2 border-r shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
+                              <th 
+                                className="sticky left-[64px] z-30 w-[200px] p-2 border-r"
+                                style={{ 
+                                  backgroundColor: '#ffffff',
+                                  boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
+                                }}
+                              >
                                 Funcionario
                               </th>
                           {dias.map((dia, index) => {
@@ -1332,8 +1344,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 data-day={index + 1}
                                 className={cn(
                                   "p-1 text-center text-xs w-[50px] bg-background",
-                                  esFinDeSemana && "bg-muted/50",
-                                  index === 0 && "ml-[264px]"
+                                  esFinDeSemana && "bg-muted/50"
                                 )}
                               >
                                 <div className="font-normal capitalize">{format(dia, 'EEE', { locale: es })}</div>
@@ -1347,13 +1358,25 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         {usuarios.map(usuario => (
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
                             {/* Columna Iniciales */}
-                            <td className="sticky left-0 z-10 !bg-white box-shadow-[inset_0_0_0_1000px_white] w-[64px] p-2 text-center border-r shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
+                            <td 
+                              className="sticky left-0 z-10 w-[64px] p-2 text-center border-r"
+                              style={{ 
+                                backgroundColor: '#ffffff',
+                                boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
+                              }}
+                            >
                               <div className="text-xs font-mono">
                                 {usuario.abreviatura?.codigo || obtenerIniciales(usuario.nombre, usuario.apellidoPaterno, usuario.apellidoMaterno)}
                               </div>
                             </td>
                             {/* Columna Funcionario */}
-                            <td className="sticky left-[64px] z-10 !bg-white box-shadow-[inset_0_0_0_1000px_white] w-[200px] p-2 border-r shadow-[2px_0_4px_rgba(0,0,0,0.1)]">
+                            <td 
+                              className="sticky left-[64px] z-10 w-[200px] p-2 border-r"
+                              style={{ 
+                                backgroundColor: '#ffffff',
+                                boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
+                              }}
+                            >
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
                                 {usuario.abreviatura?.codigo && (
