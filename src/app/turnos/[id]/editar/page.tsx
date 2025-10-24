@@ -1319,7 +1319,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               <th 
                                 className="sticky left-0 z-40 w-[64px] p-2 text-center border-r"
                                 style={{ 
-                                  position: 'relative',
                                   backgroundColor: '#ffffff',
                                   boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
                                 }}
@@ -1330,15 +1329,12 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               <th 
                                 className="sticky left-[64px] z-40 w-[200px] p-2 border-r"
                                 style={{ 
-                                  position: 'relative',
                                   backgroundColor: '#ffffff',
                                   boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
                                 }}
                               >
                                 Funcionario
                               </th>
-                              {/* ESPACIADOR INVISIBLE */}
-                              <th className="w-0 p-0 border-0"></th>
                           {dias.map((dia, index) => {
                             const diaSemana = getDay(dia)
                             const esFinDeSemana = diaSemana === 0 || diaSemana === 6
@@ -1365,7 +1361,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                             <td 
                               className="sticky left-0 z-20 w-[64px] p-2 text-center border-r"
                               style={{ 
-                                position: 'relative',
                                 backgroundColor: '#ffffff',
                                 boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
                               }}
@@ -1378,7 +1373,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                             <td 
                               className="sticky left-[64px] z-20 w-[200px] p-2 border-r"
                               style={{ 
-                                position: 'relative',
                                 backgroundColor: '#ffffff',
                                 boxShadow: '2px 0 4px rgba(0,0,0,0.1)'
                               }}
@@ -1392,8 +1386,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 )}
                               </div>
                             </td>
-                            {/* ESPACIADOR INVISIBLE */}
-                            <td className="w-0 p-0 border-0"></td>
                             {dias.map(dia => {
                               const fecha = format(dia, 'yyyy-MM-dd')
                               const key = `${fecha}-${usuario.id}`
