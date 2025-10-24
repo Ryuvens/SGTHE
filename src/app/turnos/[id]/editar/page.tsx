@@ -32,6 +32,7 @@ import { OpcionesAvanzadas } from '@/components/turnos/opciones-avanzadas'
 import { MiniMapNavigation } from '@/components/turnos/MiniMapNavigation'
 import { PositionIndicators } from '@/components/turnos/PositionIndicators'
 import RolPreview from './components/RolPreview'
+import './print.css'
 // import { StickyScrollBar } from '@/components/turnos/StickyScrollBar'
 
 import { 
@@ -941,6 +942,18 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setShowPreview(true)
   }
 
+  // Función para obtener iniciales
+  const obtenerIniciales = (
+    nombre?: string, 
+    apellidoPaterno?: string, 
+    apellidoMaterno?: string
+  ): string => {
+    const inicial1 = nombre?.charAt(0).toUpperCase() || ''
+    const inicial2 = apellidoPaterno?.charAt(0).toUpperCase() || ''
+    const inicial3 = apellidoMaterno?.charAt(0).toUpperCase() || ''
+    return `${inicial1}${inicial2}${inicial3}`
+  }
+
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6 p-8">
@@ -1295,15 +1308,30 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       className="mb-4"
                     />
 
-                    <div className="relative max-h-[600px] overflow-y-auto">
-                      <div 
-                        ref={tableContainerRef}
-                        className="overflow-x-auto"
-                      >
+                    <div 
+                      ref={tableContainerRef}
+                      className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)]"
+                    >
                         <table className="w-full border-collapse text-sm">
+                          <colgroup>
+                            <col className="w-[64px]" />     {/* Inic. */}
+                            <col className="w-[200px]" />    {/* Funcionario */}
+                            {dias.map((_, index) => (
+                              <col key={index} className="w-[50px]" />  {/* Días */}
+                            ))}
+                          </colgroup>
                           <thead>
-                            <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
-                              <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px] border-r border-border shadow-sm">
+                            <tr className="sticky top-0 z-30 bg-background border-b shadow-sm">
+                              {/* Columna Iniciales */}
+                              <th 
+                                className="sticky left-0 z-40 p-2 text-center border-r bg-white"
+                              >
+                                Inic.
+                              </th>
+                              {/* Columna Funcionario */}
+                              <th 
+                                className="sticky left-[64px] z-40 p-2 border-r bg-white"
+                              >
                                 Funcionario
                               </th>
                           {dias.map((dia, index) => {
@@ -1314,7 +1342,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 key={dia.toISOString()}
                                 data-day={index + 1}
                                 className={cn(
-                                  "p-1 text-center text-xs min-w-[45px] bg-background",
+                                  "p-1 text-center text-xs w-[50px] bg-background",
                                   esFinDeSemana && "bg-muted/50"
                                 )}
                               >
@@ -1328,7 +1356,18 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       <tbody>
                         {usuarios.map(usuario => (
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
-                            <td className="p-2 font-medium sticky left-0 bg-background z-10 border-r border-border shadow-sm">
+                            {/* Columna Iniciales */}
+                            <td 
+                              className="sticky left-0 z-20 p-2 text-center border-r bg-white"
+                            >
+                              <div className="text-xs font-mono">
+                                {usuario.abreviatura?.codigo || obtenerIniciales(usuario.nombre, usuario.apellidoPaterno, usuario.apellidoMaterno)}
+                              </div>
+                            </td>
+                            {/* Columna Funcionario */}
+                            <td 
+                              className="sticky left-[64px] z-20 p-2 border-r bg-white"
+                            >
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
                                 {usuario.abreviatura?.codigo && (
@@ -1350,7 +1389,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               return (
                                 <td 
                                   key={dia.toISOString()} 
-                                  className="p-0"
+                                  className="p-1 border-r text-center relative z-0"
                                   onPointerDown={(e) => {
                                     // Guardar posición inicial del click
                                     const startX = e.clientX
@@ -1458,7 +1497,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         ))}
                           </tbody>
                         </table>
-                      </div>
                     </div>
 
                     {/* Barra de scroll sticky - COMENTADO: El mini-mapa ya proporciona navegación horizontal */}
