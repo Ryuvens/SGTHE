@@ -1575,16 +1575,33 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de vista previa */}
-      <RolPreview
-        open={showPreview}
-        onClose={() => setShowPreview(false)}
-        publicacion={publicacion}
-        funcionarios={funcionariosOrdenados}
-        turnos={turnosAsignados}
-        mes={new Date(publicacion?.anio || 2025, publicacion?.mes - 1 || 0, 1)}
-        unidad={publicacion?.unidad?.nombre || 'Centro de Control de Área Oceánico'}
-      />
+      {/* Preparar datos para vista previa */}
+      {(() => {
+        const funcionariosOrdenados = usuarios.sort((a, b) => {
+          const nombreA = `${a.nombre} ${a.apellidoPaterno || ''}`.trim()
+          const nombreB = `${b.nombre} ${b.apellidoPaterno || ''}`.trim()
+          return nombreA.localeCompare(nombreB)
+        })
+
+        const turnosAsignados = Array.from(asignaciones.values()).map(asig => ({
+          id: asig.id,
+          funcionarioId: asig.funcionarioId,
+          fecha: asig.fecha,
+          tipoTurno: asig.tipoTurno
+        }))
+
+        return (
+          <RolPreview
+            open={showPreview}
+            onClose={() => setShowPreview(false)}
+            publicacion={publicacion}
+            funcionarios={funcionariosOrdenados}
+            turnos={turnosAsignados}
+            mes={new Date(publicacion?.anio || 2025, publicacion?.mes - 1 || 0, 1)}
+            unidad={publicacion?.unidad?.nombre || 'Centro de Control de Área Oceánico'}
+          />
+        )
+      })()}
 
       {/* Drag overlay */}
       <DragOverlay>
