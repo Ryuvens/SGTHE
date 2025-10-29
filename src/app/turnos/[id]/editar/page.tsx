@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { format, eachDayOfInterval, getDay, startOfMonth, endOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X } from 'lucide-react'
+import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X, Copy, Clipboard, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,14 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 import { 
   DraggableTurnoType, 
@@ -21,6 +29,11 @@ import {
   DraggableAsignacion 
 } from '@/components/turnos/drag-drop-components'
 import { OpcionesAvanzadas } from '@/components/turnos/opciones-avanzadas'
+import { MiniMapNavigation } from '@/components/turnos/MiniMapNavigation'
+import { PositionIndicators } from '@/components/turnos/PositionIndicators'
+import RolPreview from './components/RolPreview'
+import './print.css'
+// import { StickyScrollBar } from '@/components/turnos/StickyScrollBar'
 
 import { 
   getPublicacion, 
@@ -57,6 +70,39 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const [activeDragData, setActiveDragData] = useState<any>(null)
   const [renderVersion, setRenderVersion] = useState(0)
   const [mostrarMetricas, setMostrarMetricas] = useState(true)
+  const [sidebarColapsado, setSidebarColapsado] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  
+  // Estados para copiar/pegar secuencias
+  const [selectedCells, setSelectedCells] = useState<string[]>([]) // Keys de celdas seleccionadas
+  const [lastSelectedCell, setLastSelectedCell] = useState<string | null>(null)
+  const [copiedSequence, setCopiedSequence] = useState<Asignacion[]>([])
+  const [pastePreview, setPastePreview] = useState<{
+    destino: string
+    turnos: Asignacion[]
+    errors: string[]
+  } | null>(null)
+
+  // Estados para navegación horizontal
+  const [tableContainer, setTableContainer] = useState<HTMLDivElement | null>(null)
+  const [visibleDaysStart, setVisibleDaysStart] = useState(1)
+  const [visibleDaysEnd, setVisibleDaysEnd] = useState(7)
+
+  const tableContainerRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      console.log('✅ CALLBACK REF ejecutado:', {
+        element: node.tagName,
+        classList: Array.from(node.classList),
+        scrollWidth: node.scrollWidth,
+        clientWidth: node.clientWidth,
+        hasOverflow: node.scrollWidth > node.clientWidth
+      })
+      setTableContainer(node)
+    } else {
+      console.log('⚠️ CALLBACK REF: nodo es null')
+      setTableContainer(null)
+    }
+  }, [])
 
   // Sincronizar ref con estado
   useEffect(() => {
@@ -68,6 +114,102 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
+
+
+  // Calcular días visibles basado en scroll
+  useEffect(() => {
+    if (!tableContainer) {
+      console.log('⏳ Esperando tableContainer... (es null)')
+      return
+    }
+
+    console.log('✅ tableContainer disponible en useEffect:', {
+      element: tableContainer.tagName,
+      scrollWidth: tableContainer.scrollWidth,
+      clientWidth: tableContainer.clientWidth
+    })
+
+    const handleScroll = () => {
+      const scrollLeft = tableContainer.scrollLeft
+      const visibleWidth = tableContainer.clientWidth
+      const totalWidth = tableContainer.scrollWidth
+      
+      // Obtener todas las celdas de días
+      const allDayCells = Array.from(
+        tableContainer.querySelectorAll('[data-day]')
+      ) as HTMLElement[]
+      
+      if (allDayCells.length === 0) {
+        console.warn('⚠️ No se encontraron celdas con [data-day]')
+        return
+      }
+      
+      // Calcular cellWidth real desde la primera celda
+      const firstCell = allDayCells[0]
+      const cellRect = firstCell.getBoundingClientRect()
+      const cellWidth = cellRect.width
+
+      // ✅ MEDIR ESPACIO REAL entre dos celdas consecutivas
+      let realCellWidth = cellWidth
+      if (allDayCells.length >= 2) {
+        const secondCell = allDayCells[1]
+        const secondRect = secondCell.getBoundingClientRect()
+        // Distancia entre el inicio de celda 1 y el inicio de celda 2
+        realCellWidth = secondRect.left - cellRect.left
+        console.log('📐 Ancho de celda + espacio:', {
+          cellWidth: cellWidth,
+          cellWidthConEspacio: realCellWidth,
+          diferencia: realCellWidth - cellWidth
+        })
+      }
+
+      // ✅ CALCULAR PRIMER DÍA VISIBLE
+      const startDay = Math.max(1, Math.floor((scrollLeft + 10) / realCellWidth) + 1)
+
+      // ✅ CALCULAR DÍAS VISIBLES con el ancho real (incluyendo espacios)
+      const visibleCells = Math.floor(visibleWidth / realCellWidth)
+
+      // ✅ CALCULAR ÚLTIMO DÍA VISIBLE
+      const endDay = Math.min(31, startDay + visibleCells - 1)
+      
+      console.log('📏 Medidas reales:')
+      console.log('  - scrollLeft:', scrollLeft)
+      console.log('  - visibleWidth:', visibleWidth)
+      console.log('  - cellWidth (solo celda):', cellWidth)
+      console.log('  - realCellWidth (celda+espacio):', realCellWidth)
+      console.log('  - totalCells:', allDayCells.length)
+
+      console.log('🔢 Cálculo directo:')
+      console.log('  - (scrollLeft + 10) / realCellWidth =', (scrollLeft + 10) / realCellWidth)
+      console.log('  - startDay:', startDay)
+      console.log('  - visibleWidth / realCellWidth =', visibleWidth / realCellWidth)
+      console.log('  - visibleCells:', visibleCells)
+      console.log('  - endDay:', endDay)
+
+      console.log('📊 RESULTADO FINAL:')
+      console.log('  - Mostrando: Días', startDay, '-', endDay, 'de 31')
+      
+      setVisibleDaysStart(startDay)
+      setVisibleDaysEnd(endDay)
+    }
+
+    console.log('🔧 Iniciando listener de scroll...')
+    handleScroll() // Ejecutar inmediatamente
+    
+    tableContainer.addEventListener('scroll', handleScroll, { passive: true })
+    
+    const handleResize = () => {
+      console.log('📐 Resize detectado')
+      handleScroll()
+    }
+    window.addEventListener('resize', handleResize)
+    
+    return () => {
+      console.log('🧹 Limpiando listeners')
+      tableContainer.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [tableContainer])
 
   async function loadData() {
     try {
@@ -126,22 +268,15 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
   // Función mejorada para eliminar asignación con verificación de existencia
   async function handleEliminarAsignacion(asignacionId: string, key: string) {
-    console.log('🗑️ Intentando eliminar asignación:', { asignacionId, key })
-    
     // CRÍTICO: Verificar que existe en el Map antes de eliminar
     const asignacion = asignacionesRef.current.get(key)
     
     if (!asignacion) {
-      console.log('⚠️ Asignación no encontrada en Map (key):', key)
       toast.error('Esta asignación ya fue eliminada')
       return
     }
     
     if (asignacion.id !== asignacionId) {
-      console.log('⚠️ ID de asignación no coincide:', {
-        enMap: asignacion.id,
-        solicitado: asignacionId
-      })
       toast.error('La asignación ha cambiado, recarga la página')
       return
     }
@@ -153,7 +288,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setAsignaciones(prev => {
       const newMap = new Map(prev)
       newMap.delete(key)
-      console.log('✅ Eliminado del Map (optimistic):', key)
       return newMap
     })
     
@@ -165,7 +299,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       const result = await eliminarAsignacion(asignacionId)
       
       if (!result.success) {
-        console.error('❌ Error al eliminar de BD, revirtiendo...')
+        console.error('Error al eliminar de BD:', result.error)
         // Si falla, restaurar en el Map
         setAsignaciones(prev => {
           const newMap = new Map(prev)
@@ -175,11 +309,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         setRenderVersion(v => v + 1)
         toast.error(result.error || 'Error al eliminar')
       } else {
-        console.log('✅ Turno eliminado exitosamente de BD')
         toast.success('Turno eliminado')
       }
     } catch (error) {
-      console.error('💥 Error inesperado al eliminar:', error)
+      console.error('Error inesperado al eliminar:', error)
       // Revertir
       setAsignaciones(prev => {
         const newMap = new Map(prev)
@@ -298,17 +431,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       if (activeData?.type === 'asignacion-existente') {
         const { asignacionId, usuarioIdOrigen, fechaOrigen, tipoTurnoId, codigo, nombre, color } = activeData
         
-        console.log('📦 Intentando mover turno:', JSON.stringify({
-          asignacionId,
-          tipoTurnoId,
-          codigo,
-          origen: `${fechaOrigen} - Usuario: ${usuarioIdOrigen}`,
-          destino: `${fecha} - Usuario: ${usuarioId}`
-        }, null, 2))
-        
         // Validar todos los datos necesarios
         if (!asignacionId || !tipoTurnoId) {
-          console.error('❌ Datos incompletos:', { asignacionId, tipoTurnoId })
+          console.error('Datos incompletos para mover turno:', { asignacionId, tipoTurnoId })
           toast.error('Datos de asignación incompletos')
           setActiveId(null)
           setActiveDragData(null)
@@ -325,9 +450,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         const asignacionOriginal = asignacionesRef.current.get(keyOrigen)
         
         if (!asignacionOriginal || asignacionOriginal.id !== asignacionId) {
-          console.log('⚠️ Asignación ya no existe en Map o cambió')
-          console.log('  keyOrigen:', keyOrigen)
-          console.log('  Keys disponibles:', Array.from(asignacionesRef.current.keys()).slice(0, 5))
           toast.error('Esta asignación ya fue modificada o eliminada')
           setActiveId(null)
           setActiveDragData(null)
@@ -354,7 +476,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           }
           // Eliminar la asignación del destino primero
           if (asignacionDestino.id) {
-            console.log('🗑️ Eliminando turno en destino antes de mover')
             await handleEliminarAsignacion(asignacionDestino.id, keyDestino)
             await new Promise(resolve => setTimeout(resolve, 100))
           } else {
@@ -368,8 +489,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         setIsSaving(true)
         
         try {
-          console.log('🔄 PASO 1: Actualizar Map local (optimistic update)')
-          
           // IMPORTANTE: Actualizar el Map ANTES de hacer la llamada a la BD
           setAsignaciones(prev => {
             const newMap = new Map(prev)
@@ -382,13 +501,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               fecha: new Date(fecha),
               usuarioId: usuarioId
             })
-            console.log('✅ Map actualizado (optimistic)')
             return newMap
           })
           
           setRenderVersion(v => v + 1)
-          
-          console.log('🔄 PASO 2: Eliminar y crear en BD en paralelo')
           
           // Hacer las operaciones en la BD en paralelo
           const [deleteResult, createResult] = await Promise.all([
@@ -404,13 +520,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             })
           ])
           
-          console.log('📥 Resultados BD:', {
-            delete: deleteResult.success,
-            create: createResult.success
-          })
-          
           if (!createResult.success) {
-            console.error('❌ Error al crear en BD, revirtiendo Map')
+            console.error('Error al crear en BD, revirtiendo Map:', createResult.error)
             // Si falla la creación, revertir el Map
             setAsignaciones(prev => {
               const newMap = new Map(prev)
@@ -425,8 +536,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             setIsSaving(false)
             return
           }
-          
-          console.log('✅ PASO 3: Actualizar Map con ID real de BD')
           
           // Actualizar con el ID real de la BD
           setAsignaciones(prev => {
@@ -443,7 +552,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                 color: createResult.data!.tipoTurno?.color || color
               }
             })
-            console.log('✅ Map actualizado con ID real:', createResult.data!.id)
             return newMap
           })
           
@@ -472,10 +580,219 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     setActiveDragData(null)
   }
 
+  // ============================================
+  // FUNCIONES DE COPIAR/PEGAR SECUENCIAS
+  // ============================================
+  
+  // Manejar selección de celdas con Shift+Click
+  function handleCellClick(key: string, fecha: string, usuarioId: string, event: React.MouseEvent) {
+    // Si hay Shift presionado, seleccionar rango
+    if (event.shiftKey && lastSelectedCell) {
+      const lastParts = lastSelectedCell.split('-')
+      const currentParts = key.split('-')
+      
+      // Solo permitir selección en la misma fila (mismo usuario)
+      const lastUsuarioId = lastParts[lastParts.length - 1]
+      const currentUsuarioId = currentParts[currentParts.length - 1]
+      
+      if (lastUsuarioId === currentUsuarioId) {
+        // Calcular rango de fechas (evitar problema de zona horaria)
+        const fechaInicio = lastParts.slice(0, 3).join('-')
+        const fechaFin = currentParts.slice(0, 3).join('-')
+        
+        // Crear Date con hora del mediodía para evitar problemas de zona horaria
+        const startDate = new Date(fechaInicio + 'T12:00:00')
+        const endDate = new Date(fechaFin + 'T12:00:00')
+        
+        // Obtener todos los días entre las fechas
+        const dias = eachDayOfInterval({
+          start: startDate,
+          end: endDate
+        })
+        
+        // Crear keys para cada día (usar el usuarioId correcto)
+        const newSelection = dias.map(dia => `${format(dia, 'yyyy-MM-dd')}-${currentUsuarioId}`)
+        setSelectedCells(newSelection)
+        setLastSelectedCell(key) // Actualizar última celda seleccionada
+        toast.success(`${newSelection.length} celda${newSelection.length > 1 ? 's' : ''} seleccionada${newSelection.length > 1 ? 's' : ''}`)
+      } else {
+        toast.error('Solo puedes seleccionar celdas del mismo funcionario')
+      }
+    } else {
+      // Selección simple (toggle)
+      if (selectedCells.includes(key)) {
+        setSelectedCells(prev => prev.filter(k => k !== key))
+        setLastSelectedCell(null)
+      } else {
+        setSelectedCells([key])
+        setLastSelectedCell(key)
+      }
+    }
+  }
+  
+  // Copiar secuencia seleccionada (incluyendo espacios vacíos)
+  function handleCopySequence() {
+    if (selectedCells.length === 0) {
+      toast.error('No hay celdas seleccionadas')
+      return
+    }
+    
+    // Copiar TODAS las celdas, incluyendo las vacías (libres)
+    const sequence: (Asignacion | { isEmpty: true; key: string })[] = []
+    selectedCells.forEach(key => {
+      const asignacion = asignaciones.get(key)
+      if (asignacion) {
+        sequence.push(asignacion)
+      } else {
+        // Marcar como día libre
+        sequence.push({ isEmpty: true, key })
+      }
+    })
+    
+    setCopiedSequence(sequence as any)
+    
+    // Generar string visual de la secuencia
+    const secuenciaStr = sequence
+      .map(item => {
+        if ('isEmpty' in item && item.isEmpty) return 'Libre'
+        return (item as Asignacion).tipoTurno?.codigo || '?'
+      })
+      .join(' → ')
+    
+    toast.success(`${sequence.length} días copiados: ${secuenciaStr}`)
+  }
+  
+  // Validar pegado de secuencia (considerando días libres)
+  function validatePaste(
+    sequence: any[],
+    targetFecha: string,
+    targetUsuarioId: string
+  ): { valid: boolean; errors: string[] } {
+    const errors: string[] = []
+    
+    sequence.forEach((item, index) => {
+      // Si es un día libre, no validar (no se pegará)
+      if (item.isEmpty) return
+      
+      // Calcular fecha de destino para este turno
+      const fechaBase = new Date(targetFecha + 'T12:00:00')
+      fechaBase.setDate(fechaBase.getDate() + index)
+      const dayOfWeek = fechaBase.getDay()
+      const fechaDestino = format(fechaBase, 'yyyy-MM-dd')
+      
+      // Validación 1: Turnos de viernes solo en viernes
+      const codigo = item.tipoTurno?.codigo || ''
+      if (codigo === 'AV' && dayOfWeek !== 5) {
+        errors.push(`Día ${index + 1}: Turno ${codigo} solo puede ir en viernes`)
+      }
+      
+      // Validación 2: Verificar si la celda destino ya está ocupada
+      const keyDestino = `${fechaDestino}-${targetUsuarioId}`
+      const asignacionExistente = asignaciones.get(keyDestino)
+      if (asignacionExistente) {
+        errors.push(`Día ${index + 1} (${fechaDestino}): Ya tiene turno ${asignacionExistente.tipoTurno?.codigo}`)
+      }
+    })
+    
+    return { valid: errors.length === 0, errors }
+  }
+  
+  // Mostrar vista previa de pegado
+  function handlePastePreview(targetKey: string) {
+    if (copiedSequence.length === 0) {
+      toast.error('No hay secuencia copiada')
+      return
+    }
+    
+    const [targetFecha, targetUsuarioId] = targetKey.split('-').slice(-4).join('-').split('-')
+    const fechaCompleta = targetKey.split('-').slice(0, 3).join('-')
+    
+    // Validar el pegado
+    const validation = validatePaste(copiedSequence, fechaCompleta, targetKey.split('-').pop()!)
+    
+    setPastePreview({
+      destino: targetKey,
+      turnos: copiedSequence,
+      errors: validation.errors
+    })
+  }
+  
+  // Ejecutar pegado de secuencia (incluyendo días libres)
+  async function handleConfirmPaste() {
+    if (!pastePreview) return
+    
+    const targetUsuarioId = pastePreview.destino.split('-').pop()!
+    const fechaCompleta = pastePreview.destino.split('-').slice(0, 3).join('-')
+    
+    setIsSaving(true)
+    let turnosPegados = 0
+    
+    try {
+      // Asignar cada turno de la secuencia
+      for (let i = 0; i < pastePreview.turnos.length; i++) {
+        const item = pastePreview.turnos[i] as any
+        
+        // Si es un día libre (isEmpty), saltarlo
+        if (item.isEmpty) {
+          continue
+        }
+        
+        // Calcular fecha destino (con hora del mediodía para evitar zona horaria)
+        const fechaBase = new Date(fechaCompleta + 'T12:00:00')
+        fechaBase.setDate(fechaBase.getDate() + i)
+        const nuevaFecha = format(fechaBase, 'yyyy-MM-dd')
+        
+        // Verificar si existe el tipo de turno
+        if (!item.tipoTurnoId) {
+          continue
+        }
+        
+        const result = await asignarTurno({
+          publicacionId: params.id,
+          usuarioId: targetUsuarioId,
+          tipoTurnoId: item.tipoTurnoId,
+          fecha: new Date(nuevaFecha + 'T12:00:00'),
+          esNocturno: false,
+          esDiaInhabil: false,
+          esFestivo: false,
+        })
+        
+        if (result.success && result.data) {
+          // Actualizar Map local
+          const key = `${nuevaFecha}-${targetUsuarioId}`
+          setAsignaciones(prev => {
+            const newMap = new Map(prev)
+            newMap.set(key, {
+              id: result.data!.id,
+              fecha: new Date(nuevaFecha),
+              usuarioId: targetUsuarioId,
+              tipoTurnoId: result.data!.tipoTurnoId,
+              tipoTurno: item.tipoTurno
+            })
+            return newMap
+          })
+          turnosPegados++
+        }
+      }
+      
+      setRenderVersion(v => v + 1)
+      toast.success(`Secuencia pegada: ${turnosPegados} turnos (${pastePreview.turnos.length - turnosPegados} días libres)`)
+      setPastePreview(null)
+      setSelectedCells([])
+      setCopiedSequence([])
+      
+    } catch (error) {
+      console.error('Error al pegar secuencia:', error)
+      toast.error('Error al pegar la secuencia')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   // Calcular métricas de HLM y validaciones DAN 11 por usuario
   function calcularMetricasUsuario(usuarioId: string) {
-    const turnosUsuario = Array.from(asignaciones.values())
-      .filter(a => a.usuarioId === usuarioId)
+    const todasLasAsignaciones = Array.from(asignaciones.values())
+    const turnosUsuario = todasLasAsignaciones.filter(a => a.usuarioId === usuarioId)
     
     // Horas por tipo de turno según documento oficial
     const HORAS_TURNO: Record<string, number> = {
@@ -565,6 +882,66 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const fechaFin = endOfMonth(fechaInicio)
   const dias = eachDayOfInterval({ start: fechaInicio, end: fechaFin })
 
+  // Funciones de navegación horizontal
+  const handleNavigateToDay = (startDay: number, totalDays: number) => {
+    if (!tableContainer) {
+      console.error('❌ tableContainer no disponible en handleNavigateToDay')
+      return
+    }
+    
+    // Calcular ancho real de celda desde el DOM usando getBoundingClientRect
+    const firstDayCell = tableContainer.querySelector('[data-day]') as HTMLElement
+    let cellWidth = 45
+    
+    if (firstDayCell) {
+      const rect = firstDayCell.getBoundingClientRect()
+      cellWidth = rect.width
+    }
+    
+    const scrollTo = (startDay - 1) * cellWidth
+    
+    console.log('🎯 Navegando a día:', { 
+      startDay, 
+      cellWidth, 
+      scrollTo,
+      currentScroll: tableContainer.scrollLeft
+    })
+    
+    tableContainer.scrollTo({ left: scrollTo, behavior: 'smooth' })
+  }
+
+  const handleNavigatePrevWeek = (totalDays: number) => {
+    const newStart = Math.max(1, visibleDaysStart - 7)
+    console.log('⬅️ Semana anterior:', { 
+      currentStart: visibleDaysStart, 
+      newStart 
+    })
+    handleNavigateToDay(newStart, totalDays)
+  }
+
+  const handleNavigateNextWeek = (totalDays: number) => {
+    const newStart = Math.min(totalDays - 6, visibleDaysStart + 7)
+    console.log('➡️ Siguiente semana:', { 
+      currentStart: visibleDaysStart, 
+      newStart, 
+      totalDays 
+    })
+    handleNavigateToDay(newStart, totalDays)
+  }
+
+  const handleNavigateToToday = (currentDay: number, totalDays: number) => {
+    const todayStart = Math.max(1, currentDay - 3)
+    console.log('📅 Ir a hoy:', { 
+      currentDay, 
+      todayStart 
+    })
+    handleNavigateToDay(todayStart, totalDays)
+  }
+
+  const handlePreview = () => {
+    setShowPreview(true)
+  }
+
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6 p-8">
@@ -598,6 +975,38 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               <TrendingUp className="mr-2 h-4 w-4" />
               {mostrarMetricas ? 'Ocultar' : 'Ver'} Métricas
             </Button>
+            
+            {/* Botones de Copiar/Pegar */}
+            {selectedCells.length > 0 && (
+              <>
+                <Badge variant="secondary">
+                  {selectedCells.length} celda{selectedCells.length > 1 ? 's' : ''} seleccionada{selectedCells.length > 1 ? 's' : ''}
+                </Badge>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCopySequence}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setSelectedCells([])}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            
+            {copiedSequence.length > 0 && (
+              <Badge variant="default" className="bg-green-600">
+                <Clipboard className="mr-1 h-3 w-3" />
+                {copiedSequence.length} turno{copiedSequence.length > 1 ? 's' : ''} copiado{copiedSequence.length > 1 ? 's' : ''}
+              </Badge>
+            )}
+            
             <OpcionesAvanzadas publicacionId={params.id} />
             <Badge variant={publicacion.estado === 'PUBLICADO' ? 'default' : 'secondary'}>
               {publicacion.estado}
@@ -613,7 +1022,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
         {/* Panel de Métricas HLM */}
         {mostrarMetricas && (
-          <Card className="border-2 border-primary">
+          <Card className="border-2 border-primary" key={`metricas-${renderVersion}-${asignaciones.size}`}>
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2">
@@ -649,6 +1058,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                   <tbody>
                     {usuarios.map(usuario => {
                       const m = calcularMetricasUsuario(usuario.id)
+                      
                       return (
                         <tr 
                           key={usuario.id} 
@@ -754,42 +1164,72 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
           </Card>
         )}
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className={`grid gap-6 ${sidebarColapsado ? 'grid-cols-1' : 'grid-cols-12'}`}>
           {/* Sidebar con tipos de turno */}
-          <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Tipos de Turno</CardTitle>
-                <CardDescription>Arrastra al calendario para asignar</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px] pr-4">
-                  <div className="space-y-2">
-                    {tiposTurno.length === 0 ? (
-                      <div className="text-sm text-muted-foreground text-center py-8">
-                        No hay tipos de turno disponibles
-                      </div>
-                    ) : (
-                      tiposTurno.map(turno => (
-                        <DraggableTurnoType
-                          key={turno.id}
-                          id={turno.id}
-                          codigo={turno.codigo}
-                          color={turno.color || '#6B7280'}
-                          nombre={turno.nombre}
-                          horaInicio={turno.horaInicio}
-                          horaFin={turno.horaFin}
-                        />
-                      ))
+          <div className={sidebarColapsado ? 'w-14' : 'col-span-3'}>
+            <Card className={cn(
+              "transition-all duration-300",
+              sidebarColapsado && "w-14"
+            )}>
+              <CardHeader className={cn(
+                "transition-all duration-300",
+                sidebarColapsado ? "p-2" : "p-6"
+              )}>
+                <div className="flex items-center justify-between">
+                  {!sidebarColapsado && (
+                    <div>
+                      <CardTitle className="text-base">Tipos de Turno</CardTitle>
+                      <CardDescription>Arrastra al calendario para asignar</CardDescription>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarColapsado(!sidebarColapsado)}
+                    className={cn(
+                      "h-8 w-8 p-0",
+                      sidebarColapsado && "w-full"
                     )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
+                    title={sidebarColapsado ? "Expandir" : "Colapsar"}
+                  >
+                    {sidebarColapsado ? (
+                      <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <ChevronLeft className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              {!sidebarColapsado && (
+                <CardContent>
+                  <ScrollArea className="h-[600px] pr-4">
+                    <div className="space-y-2">
+                      {tiposTurno.length === 0 ? (
+                        <div className="text-sm text-muted-foreground text-center py-8">
+                          No hay tipos de turno disponibles
+                        </div>
+                      ) : (
+                        tiposTurno.map(turno => (
+                          <DraggableTurnoType
+                            key={turno.id}
+                            id={turno.id}
+                            codigo={turno.codigo}
+                            color={turno.color || '#6B7280'}
+                            nombre={turno.nombre}
+                            horaInicio={turno.horaInicio}
+                            horaFin={turno.horaFin}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              )}
             </Card>
           </div>
 
           {/* Calendario editable */}
-          <div className="col-span-9">
+          <div className={sidebarColapsado ? 'col-span-11' : 'col-span-9'}>
             <Card>
               <CardHeader>
                 <CardTitle>Calendario de Asignación</CardTitle>
@@ -807,21 +1247,75 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2 font-medium sticky left-0 bg-background z-10 min-w-[140px]">
-                            Funcionario
-                          </th>
-                          {dias.map(dia => {
+                  <>
+                    {/* Indicadores de posición */}
+                    <PositionIndicators
+                      currentMonth={fechaInicio}
+                      visibleDaysStart={visibleDaysStart}
+                      visibleDaysEnd={visibleDaysEnd}
+                      totalDays={dias.length}
+                      currentDay={new Date().getDate()}
+                      onNavigatePrevWeek={() => {
+                        console.log('🔵 CLICK: Semana anterior')
+                        console.log('📊 Estado actual:', {
+                          visibleDaysStart,
+                          visibleDaysEnd,
+                          totalDays: dias.length
+                        })
+                        handleNavigatePrevWeek(dias.length)
+                      }}
+                      onNavigateNextWeek={() => {
+                        console.log('🔵 CLICK: Siguiente semana')
+                        console.log('📊 Estado actual:', {
+                          visibleDaysStart,
+                          visibleDaysEnd,
+                          totalDays: dias.length
+                        })
+                        handleNavigateNextWeek(dias.length)
+                      }}
+                      onNavigateToToday={() => {
+                        console.log('🔵 CLICK: Ir a hoy')
+                        console.log('📊 Estado actual:', {
+                          currentDay: new Date().getDate(),
+                          visibleDaysStart,
+                          visibleDaysEnd
+                        })
+                        handleNavigateToToday(new Date().getDate(), dias.length)
+                      }}
+                      onPreview={handlePreview}
+                      className="mb-4"
+                    />
+
+                    {/* Mini-mapa de navegación */}
+                    <MiniMapNavigation
+                      totalDays={dias.length}
+                      visibleDaysStart={visibleDaysStart}
+                      visibleDaysEnd={visibleDaysEnd}
+                      currentDay={new Date().getDate()}
+                      onNavigate={(startDay) => handleNavigateToDay(startDay, dias.length)}
+                      className="mb-4"
+                    />
+
+                    <div className="relative max-h-[600px] overflow-y-auto">
+                      <div 
+                        ref={tableContainerRef}
+                        className="overflow-x-auto"
+                      >
+                        <table className="w-full border-collapse text-sm">
+                          <thead>
+                            <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
+                              <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px] border-r border-border shadow-sm">
+                                Funcionario
+                              </th>
+                          {dias.map((dia, index) => {
                             const diaSemana = getDay(dia)
                             const esFinDeSemana = diaSemana === 0 || diaSemana === 6
                             return (
                               <th 
-                                key={dia.toISOString()} 
+                                key={dia.toISOString()}
+                                data-day={index + 1}
                                 className={cn(
-                                  "p-1 text-center text-xs min-w-[45px]",
+                                  "p-1 text-center text-xs min-w-[45px] bg-background",
                                   esFinDeSemana && "bg-muted/50"
                                 )}
                               >
@@ -835,7 +1329,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       <tbody>
                         {usuarios.map(usuario => (
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
-                            <td className="p-2 font-medium sticky left-0 bg-background z-10">
+                            <td className="p-2 font-medium sticky left-0 bg-background z-10 border-r border-border shadow-sm">
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
                                 {usuario.abreviatura?.codigo && (
@@ -851,53 +1345,262 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               const asignacion = asignaciones.get(key)
                               const esFinDeSemana = getDay(dia) === 0 || getDay(dia) === 6
                               
+                              const isSelected = selectedCells.includes(key)
+                              const canPaste = copiedSequence.length > 0 && !asignacion
+                              
                               return (
-                                <td key={dia.toISOString()} className="p-0">
-                                  <DroppableCalendarCell
-                                    id={key}
-                                    fecha={fecha}
-                                    usuarioId={usuario.id}
-                                    isWeekend={esFinDeSemana}
-                                  >
-                                    {asignacion && (
-                                      <DraggableAsignacion
-                                        key={`${asignacion.id}-v${renderVersion}`}
-                                        asignacion={{
-                                          id: asignacion.id,
-                                          fecha: fecha, // Usar fecha del loop (ya en formato 'yyyy-MM-dd')
-                                          usuarioId: usuario.id,
-                                          tipoTurnoId: asignacion.tipoTurnoId || asignacion.tipoTurno?.id,
-                                          tipoTurno: {
-                                            id: asignacion.tipoTurno?.id,
-                                            codigo: asignacion.tipoTurno?.codigo || '',
-                                            nombre: asignacion.tipoTurno?.nombre,
-                                            color: asignacion.tipoTurno?.color
-                                          }
-                                        }}
-                                        onDelete={() => {
-                                          if (asignacion.id) {
-                                            handleEliminarAsignacion(asignacion.id, key)
-                                          } else {
-                                            toast.error('ID de asignación no válido')
-                                          }
-                                        }}
-                                      />
+                                <td 
+                                  key={dia.toISOString()} 
+                                  className="p-0"
+                                  onPointerDown={(e) => {
+                                    // Guardar posición inicial del click
+                                    const startX = e.clientX
+                                    const startY = e.clientY
+                                    let hasMoved = false
+                                    
+                                    // Función para detectar si hubo movimiento (drag)
+                                    const handlePointerMove = (moveEvent: PointerEvent) => {
+                                      const deltaX = Math.abs(moveEvent.clientX - startX)
+                                      const deltaY = Math.abs(moveEvent.clientY - startY)
+                                      
+                                      // Si se movió más de 5px, es un drag
+                                      if (deltaX > 5 || deltaY > 5) {
+                                        hasMoved = true
+                                      }
+                                    }
+                                    
+                                    // Función cuando suelta el botón
+                                    const handlePointerUp = (upEvent: PointerEvent) => {
+                                      // Limpiar listeners
+                                      document.removeEventListener('pointermove', handlePointerMove)
+                                      document.removeEventListener('pointerup', handlePointerUp)
+                                      
+                                      // Si NO hubo movimiento, es un CLICK (selección)
+                                      if (!hasMoved) {
+                                        // Verificar que no sea click en botón de eliminar
+                                        const target = upEvent.target as HTMLElement
+                                        if (target.tagName === 'BUTTON' || target.closest('button')) {
+                                          return
+                                        }
+                                        
+                                        // Si hay secuencia copiada y la celda está vacía, mostrar preview
+                                        if (canPaste) {
+                                          handlePastePreview(key)
+                                        } else {
+                                          // Crear evento sintético de mouse para handleCellClick
+                                          const syntheticEvent = {
+                                            shiftKey: upEvent.shiftKey,
+                                            ctrlKey: upEvent.ctrlKey,
+                                            metaKey: upEvent.metaKey,
+                                            preventDefault: () => {},
+                                            stopPropagation: () => {}
+                                          } as React.MouseEvent
+                                          
+                                          handleCellClick(key, fecha, usuario.id, syntheticEvent)
+                                        }
+                                      }
+                                    }
+                                    
+                                    // Agregar listeners
+                                    document.addEventListener('pointermove', handlePointerMove)
+                                    document.addEventListener('pointerup', handlePointerUp)
+                                  }}
+                                >
+                                  <div
+                                    className={cn(
+                                      "relative",
+                                      isSelected && "ring-4 ring-blue-400 ring-inset z-20 bg-blue-100 dark:bg-blue-900/40 shadow-lg shadow-blue-500/20",
+                                      canPaste && "hover:bg-green-50 dark:hover:bg-green-950/20"
                                     )}
-                                  </DroppableCalendarCell>
+                                  >
+                                    <DroppableCalendarCell
+                                      id={key}
+                                      fecha={fecha}
+                                      usuarioId={usuario.id}
+                                      isWeekend={esFinDeSemana}
+                                    >
+                                      {asignacion && (
+                                        <DraggableAsignacion
+                                          key={`${asignacion.id}-v${renderVersion}`}
+                                          asignacion={{
+                                            id: asignacion.id,
+                                            fecha: fecha, // Usar fecha del loop (ya en formato 'yyyy-MM-dd')
+                                            usuarioId: usuario.id,
+                                            tipoTurnoId: asignacion.tipoTurnoId || asignacion.tipoTurno?.id,
+                                            tipoTurno: {
+                                              id: asignacion.tipoTurno?.id,
+                                              codigo: asignacion.tipoTurno?.codigo || '',
+                                              nombre: asignacion.tipoTurno?.nombre,
+                                              color: asignacion.tipoTurno?.color
+                                            }
+                                          }}
+                                          onDelete={() => {
+                                            if (asignacion.id) {
+                                              handleEliminarAsignacion(asignacion.id, key)
+                                            } else {
+                                              toast.error('ID de asignación no válido')
+                                            }
+                                          }}
+                                        />
+                                      )}
+                                      
+                                      {/* Indicador de paste disponible */}
+                                      {canPaste && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                          <Clipboard className="h-3 w-3 text-green-600" />
+                                        </div>
+                                      )}
+                                    </DroppableCalendarCell>
+                                  </div>
                                 </td>
                               )
                             })}
                           </tr>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Barra de scroll sticky - COMENTADO: El mini-mapa ya proporciona navegación horizontal */}
+                    {/* <StickyScrollBar
+                      scrollContainerRef={tableContainerRef}
+                      totalDays={dias.length}
+                      visibleDaysStart={visibleDaysStart}
+                      currentDay={new Date().getDate()}
+                    /> */}
+                  </>
                 )}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      {/* Modal de vista previa para pegar */}
+      <Dialog open={!!pastePreview} onOpenChange={() => setPastePreview(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Vista Previa - Pegar Secuencia</DialogTitle>
+            <DialogDescription>
+              Revisa los turnos que se pegarán antes de confirmar
+            </DialogDescription>
+          </DialogHeader>
+          
+          {pastePreview && (
+            <div className="space-y-4">
+              {/* Información de la secuencia */}
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  {pastePreview.turnos.length} turno{pastePreview.turnos.length > 1 ? 's' : ''}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Secuencia: {pastePreview.turnos.map(t => t.tipoTurno?.codigo).join(' → ')}
+                </span>
+              </div>
+              
+              {/* Tabla de preview */}
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="text-left p-2">Día</th>
+                      <th className="text-center p-2">Turno</th>
+                      <th className="text-left p-2">Horario</th>
+                      <th className="text-center p-2">Horas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pastePreview.turnos.map((item: any, index) => {
+                      const fechaBase = new Date(pastePreview.destino.split('-').slice(0, 3).join('-') + 'T12:00:00')
+                      fechaBase.setDate(fechaBase.getDate() + index)
+                      const fecha = format(fechaBase, 'yyyy-MM-dd')
+                      
+                      const isLibre = item.isEmpty === true
+                      
+                      return (
+                        <tr key={index} className="border-t">
+                          <td className="p-2">
+                            {format(fechaBase, "EEE d 'de' MMMM", { locale: es })}
+                          </td>
+                          <td className="text-center p-2">
+                            {isLibre ? (
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Libre
+                              </Badge>
+                            ) : (
+                              <Badge style={{ backgroundColor: item.tipoTurno?.color, color: 'white' }}>
+                                {item.tipoTurno?.codigo}
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="p-2 text-muted-foreground text-xs">
+                            {isLibre ? 'Día de descanso' : (item.tipoTurno?.nombre || '-')}
+                          </td>
+                          <td className="text-center p-2">
+                            {isLibre ? '0h' : '12h'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Errores de validación */}
+              {pastePreview.errors.length > 0 && (
+                <div className="bg-destructive/10 border border-destructive rounded-lg p-3">
+                  <h4 className="font-semibold text-destructive mb-2">⚠️ Errores de Validación:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    {pastePreview.errors.map((error, i) => (
+                      <li key={i} className="text-destructive">{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPastePreview(null)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleConfirmPaste}
+              disabled={pastePreview?.errors && pastePreview.errors.length > 0}
+            >
+              <Check className="mr-2 h-4 w-4" />
+              Confirmar Pegado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de vista previa */}
+      <RolPreview
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        publicacion={publicacion}
+        funcionarios={usuarios.map((u) => ({
+          id: u.id,
+          nombre: u.nombre,
+          apellidoPaterno: u.apellidoPaterno || '',
+          apellidoMaterno: u.apellidoMaterno || '',
+          unidad: u.unidad || ''
+        }))}
+        turnos={Array.from(asignaciones.values()).map((asig) => ({
+          id: asig.id,
+          funcionarioId: asig.usuarioId,
+          fecha: asig.fecha,
+          tipoTurno: {
+            codigo: asig.tipoTurno?.codigo || '?',
+            color: asig.tipoTurno?.color || '#000',
+            nombre: asig.tipoTurno?.nombre || ''
+          }
+        }))}
+        mes={new Date(publicacion?.anio || 2025, (publicacion?.mes || 1) - 1, 1)}
+        unidad={publicacion?.unidad?.nombre || 'Centro de Control de Área Oceánico'}
+      />
 
       {/* Drag overlay */}
       <DragOverlay>
@@ -913,3 +1616,43 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   )
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════
+ * FEATURES IMPLEMENTADAS - ROL DE TURNOS (SGTHE)
+ * ═══════════════════════════════════════════════════════════
+ * 
+ * ✅ CP-007.1: Estructura base del rol
+ * ✅ CP-007.2: Grid del calendario  
+ * ✅ CP-007.3: Drag & Drop de turnos (optimistic updates)
+ * ✅ CP-007.4: CRUD de asignaciones
+ * ✅ CP-007.5: Multi-unidad (filtros por unidad)
+ * ✅ CP-007.6: Panel de Métricas HLM
+ * ✅ CP-007.7: Sistema de Copiar/Pegar Secuencias
+ *    - Selección simple (click)
+ *    - Selección de rango (Shift+Click)
+ *    - Copiar incluyendo días libres
+ *    - Vista previa antes de pegar
+ *    - Validaciones (turnos de viernes)
+ *    - Pegado respetando días libres
+ * 
+ * ⏳ PENDIENTE:
+ * - CP-007.8: Plantillas de patrones
+ * - CP-007.9: Continuar secuencia automáticamente
+ * - CP-007.10: Drag & Drop de funcionarios (reordenar)
+ * - CP-007.11: Exportación PDF/Excel
+ * - CP-007.12: Sistema de notificaciones
+ * - CP-007.13: Validaciones DAN 11 en tiempo real
+ * 
+ * FIXES CRÍTICOS RESUELTOS:
+ * - FIX 20: Conditional React Hooks en Vercel
+ * - FIX 21: Middleware optimizado (1.01 MB → 26.7 kB)
+ * - FIX 22: Loop infinito de redirecciones
+ * - FIX 23: Zona horaria en drag & drop
+ * - FIX 24: Métricas HLM cálculo incorrecto
+ * - FIX 25: Copiar días libres en secuencias
+ * - FIX 26: Desfase de fechas en Shift+Click
+ * - FIX 27: onPointerDown para permitir selección con turnos
+ * 
+ * ÚLTIMA ACTUALIZACIÓN: 2025-10-22
+ * ═══════════════════════════════════════════════════════════
+ */

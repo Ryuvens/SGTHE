@@ -177,12 +177,18 @@ export function DraggableAsignacion({
       <div
         {...listeners}
         {...attributes}
+        onClick={(e) => {
+          // Permitir que el click se propague al <td> padre para selección
+          // @dnd-kit maneja el drag, pero queremos permitir clicks para selección
+          console.log('🔶 TURNO CLICK - Propagando evento para selección')
+          // NO usar e.stopPropagation() para permitir selección
+        }}
         className="rounded px-1.5 py-1.5 text-xs font-semibold text-center cursor-move hover:ring-2 hover:ring-primary hover:ring-offset-1 transition-all"
         style={{ 
           backgroundColor: asignacion.tipoTurno?.color || '#6B7280',
           color: 'white'
         }}
-        title={`${asignacion.tipoTurno?.nombre || 'Turno'} - Arrastra para mover`}
+        title={`${asignacion.tipoTurno?.nombre || 'Turno'} - Arrastra para mover | Click para seleccionar`}
       >
         {asignacion.tipoTurno?.codigo}
       </div>
