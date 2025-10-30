@@ -12,47 +12,53 @@ datasource db {
 // ============================================
 
 model Usuario {
-  id                String   @id @default(cuid())
-  email             String   @unique
-  nombre            String
-  apellido          String
-  rut               String?  @unique
+  id       String  @id @default(cuid())
+  email    String  @unique
+  nombre   String
+  apellido String
+  rut      String? @unique
 
   // Datos profesionales
-  numeroLicencia    String?  @unique
-  validezMedica     DateTime?
+  numeroLicencia     String?   @unique
+  validezMedica      DateTime?
   validezLinguistica DateTime?
 
   // Autenticación
-  password          String
-  pin               String?  // PIN de 4 dígitos para modo kiosco
+  password String
+  pin      String? // PIN de 4 dígitos para modo kiosco
 
   // Rol y permisos
-  rol               RolUsuario
-  activo            Boolean  @default(true)
+  rol    RolUsuario
+  activo Boolean    @default(true)
 
   // Relación con unidad
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
+  unidadId String
+  unidad   Unidad @relation(fields: [unidadId], references: [id])
 
   // Habilitaciones DAN 11
-  habilitaciones    Habilitacion[]
+  habilitaciones Habilitacion[]
 
   // Abreviatura ATCO (para ATC-6)
-  abreviatura       AbreviaturaATCO?
+  abreviatura AbreviaturaATCO?
 
   // Registros
-  registrosATC6     RegistroATC6[]
-  registrosATC6Instructor RegistroATC6[] @relation("InstructorATC6")
-  asignacionesTurno AsignacionTurno[]
+  registrosATC6           RegistroATC6[]
+  registrosATC6Instructor RegistroATC6[]    @relation("InstructorATC6")
+  asignacionesTurno       AsignacionTurno[]
 
   // Cálculos mensuales
-  calculosHoras     CalculoHorasMensual[]
-  consolidadosATC6  ConsolidadoATC6Mensual[]
+  calculosHoras    CalculoHorasMensual[]
+  consolidadosATC6 ConsolidadoATC6Mensual[]
 
   // Auditoría
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Módulo de métricas - relaciones inversas
+  saldosHoras             SaldoHorasFuncionario[]
+  planillasControl        PlanillaControlTurno[]
+  historialCompensaciones HistorialCompensacion[]
+  configuracionMetricas   ConfiguracionMetricas?
 
   @@index([unidadId])
   @@index([email])
@@ -72,34 +78,34 @@ enum RolUsuario {
 // ============================================
 
 model Unidad {
-  id                String   @id @default(cuid())
-  nombre            String   @unique
-  codigo            String   @unique
-  sigla             String
-  tipoProfesion     TipoProfesion @default(ATC)
+  id            String        @id @default(cuid())
+  nombre        String        @unique
+  codigo        String        @unique
+  sigla         String
+  tipoProfesion TipoProfesion @default(ATC)
 
   // Configuración
-  activa            Boolean  @default(true)
-  horarioOperacion  HorarioOperacion?
+  activa           Boolean           @default(true)
+  horarioOperacion HorarioOperacion?
 
   // Relaciones
-  usuarios          Usuario[]
-  tiposTurno        TipoTurno[]
-  configuracionATS  ConfiguracionUnidadATS?
-  puestosTrabajo    PuestoTrabajo[]
-  puntosFIX         PuntoFIX[]
-  habilitaciones    Habilitacion[]
+  usuarios         Usuario[]
+  tiposTurno       TipoTurno[]
+  configuracionATS ConfiguracionUnidadATS?
+  puestosTrabajo   PuestoTrabajo[]
+  puntosFIX        PuntoFIX[]
+  habilitaciones   Habilitacion[]
 
   // Turnos y horas
   publicacionesTurnos PublicacionTurnos[]
-  registrosATC6     RegistroATC6[]
-  consolidadosATC6  ConsolidadoATC6Mensual[]
-  calculosHoras     CalculoHorasMensual[]
+  registrosATC6       RegistroATC6[]
+  consolidadosATC6    ConsolidadoATC6Mensual[]
+  calculosHoras       CalculoHorasMensual[]
 
   // Estadísticas
-  operacionesPorPunto OperacionPorPunto[]
-  resumenDiario     ResumenOperacionesDiario[]
-  resumenHorario    ResumenOperacionesHorario[]
+  operacionesPorPunto   OperacionPorPunto[]
+  resumenDiario         ResumenOperacionesDiario[]
+  resumenHorario        ResumenOperacionesHorario[]
   estadisticasMensuales EstadisticasMensuales[]
 
   // Incidentes y problemas
@@ -107,11 +113,14 @@ model Unidad {
   problemasTecnicos ProblemaTecnico[]
 
   // IMATS
-  imats             IMATS[]
+  imats IMATS[]
 
   // Auditoría
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Módulo de métricas - relación inversa
+  configuracion ConfiguracionUnidad?
 
   @@index([activa])
   @@index([codigo])
@@ -133,31 +142,31 @@ enum HorarioOperacion {
 }
 
 model ConfiguracionUnidadATS {
-  id                String   @id @default(cuid())
-  unidadId          String   @unique
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
+  id                String           @id @default(cuid())
+  unidadId          String           @unique
+  unidad            Unidad           @relation(fields: [unidadId], references: [id])
   horarioOperacion  HorarioOperacion
   dotacionRequerida Int
   configuraciones   Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 }
 
 model PuestoTrabajo {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  nombre            String
-  codigo            String
-  tipo              TipoPuesto
-  horarioOperacion  HorarioOperacion
-  dotacionRequerida Int
-  dotacionActual    Int      @default(0)
-  activo            Boolean  @default(true)
-  alertaBajaDotacion Boolean @default(false)
-  registrosATC6     RegistroATC6[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String           @id @default(cuid())
+  unidadId           String
+  unidad             Unidad           @relation(fields: [unidadId], references: [id])
+  nombre             String
+  codigo             String
+  tipo               TipoPuesto
+  horarioOperacion   HorarioOperacion
+  dotacionRequerida  Int
+  dotacionActual     Int              @default(0)
+  activo             Boolean          @default(true)
+  alertaBajaDotacion Boolean          @default(false)
+  registrosATC6      RegistroATC6[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   @@unique([unidadId, codigo])
   @@index([horarioOperacion])
@@ -177,27 +186,27 @@ enum TipoPuesto {
 // ============================================
 
 model TipoTurno {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  codigo            String
-  nombre            String
-  descripcion       String?
-  horaInicio        String?
-  horaFin           String?
-  duracionHoras     Float?
-  esOperativo       Boolean  @default(true)
-  esNocturno        Boolean  @default(false)
-  esDiaInhabil      Boolean  @default(false)
-  color             String   @default("#3b82f6")
-  activo            Boolean  @default(true)
-  orden             Int      @default(0)
-  validaciones      Json?
-  creadoPor         String
-  modificadoPor     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  asignaciones      AsignacionTurno[]
+  id            String            @id @default(cuid())
+  unidadId      String
+  unidad        Unidad            @relation(fields: [unidadId], references: [id])
+  codigo        String
+  nombre        String
+  descripcion   String?
+  horaInicio    String?
+  horaFin       String?
+  duracionHoras Float?
+  esOperativo   Boolean           @default(true)
+  esNocturno    Boolean           @default(false)
+  esDiaInhabil  Boolean           @default(false)
+  color         String            @default("#3b82f6")
+  activo        Boolean           @default(true)
+  orden         Int               @default(0)
+  validaciones  Json?
+  creadoPor     String
+  modificadoPor String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  asignaciones  AsignacionTurno[]
 
   @@unique([unidadId, codigo])
   @@index([unidadId, activo])
@@ -208,23 +217,23 @@ model TipoTurno {
 // ============================================
 
 model Habilitacion {
-  id                String   @id @default(cuid())
-  usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id])
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  tipoHabilitacion  TipoHabilitacion
-  dependencias      Json
-  fechaInicio       DateTime
-  fechaVencimiento  DateTime?
-  activa            Boolean  @default(true)
-  requierePericia   Boolean  @default(true)
-  horasMinimasMes   Int      @default(10)
-  ultimaVCP         DateTime?
-  proximaVCP        DateTime?
-  otorgadaPor       String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String           @id @default(cuid())
+  usuarioId        String
+  usuario          Usuario          @relation(fields: [usuarioId], references: [id])
+  unidadId         String
+  unidad           Unidad           @relation(fields: [unidadId], references: [id])
+  tipoHabilitacion TipoHabilitacion
+  dependencias     Json
+  fechaInicio      DateTime
+  fechaVencimiento DateTime?
+  activa           Boolean          @default(true)
+  requierePericia  Boolean          @default(true)
+  horasMinimasMes  Int              @default(10)
+  ultimaVCP        DateTime?
+  proximaVCP       DateTime?
+  otorgadaPor      String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   @@index([usuarioId])
   @@index([unidadId])
@@ -245,21 +254,24 @@ enum TipoHabilitacion {
 // ============================================
 
 model PublicacionTurnos {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  mes               Int
-  año               Int
-  estado            EstadoPublicacion
-  fechaPublicacion  DateTime @default(now())
-  fechaInicio       DateTime
-  fechaFin          DateTime
-  asignaciones      AsignacionTurno[]
-  aprobadoPor       String?
-  aprobadoAt        DateTime?
-  creadoPor         String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String            @id @default(cuid())
+  unidadId         String
+  unidad           Unidad            @relation(fields: [unidadId], references: [id])
+  mes              Int
+  año             Int
+  estado           EstadoPublicacion
+  fechaPublicacion DateTime          @default(now())
+  fechaInicio      DateTime
+  fechaFin         DateTime
+  asignaciones     AsignacionTurno[]
+  aprobadoPor      String?
+  aprobadoAt       DateTime?
+  creadoPor        String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // Módulo de métricas - relación inversa
+  planillasControl PlanillaControlTurno[]
 
   @@unique([unidadId, mes, año])
   @@index([estado])
@@ -273,23 +285,23 @@ enum EstadoPublicacion {
 }
 
 model AsignacionTurno {
-  id                String   @id @default(cuid())
-  publicacionId     String
-  publicacion       PublicacionTurnos @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
-  usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id])
-  tipoTurnoId       String
-  tipoTurno         TipoTurno @relation(fields: [tipoTurnoId], references: [id])
-  fecha             DateTime @db.Date
-  horaInicio        String?
-  horaFin           String?
-  duracion          Float?
-  esNocturno        Boolean  @default(false)
-  esDiaInhabil      Boolean  @default(false)
-  esFestivo         Boolean  @default(false)
-  observaciones     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id            String            @id @default(cuid())
+  publicacionId String
+  publicacion   PublicacionTurnos @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  usuarioId     String
+  usuario       Usuario           @relation(fields: [usuarioId], references: [id])
+  tipoTurnoId   String
+  tipoTurno     TipoTurno         @relation(fields: [tipoTurnoId], references: [id])
+  fecha         DateTime          @db.Date
+  horaInicio    String?
+  horaFin       String?
+  duracion      Float?
+  esNocturno    Boolean           @default(false)
+  esDiaInhabil  Boolean           @default(false)
+  esFestivo     Boolean           @default(false)
+  observaciones String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@unique([publicacionId, usuarioId, fecha])
   @@index([fecha])
@@ -301,36 +313,36 @@ model AsignacionTurno {
 // ============================================
 
 model RegistroATC6 {
-  id                String   @id @default(cuid())
+  id                String               @id @default(cuid())
   unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
+  unidad            Unidad               @relation(fields: [unidadId], references: [id])
   puestoTrabajoId   String?
-  puestoTrabajo     PuestoTrabajo? @relation(fields: [puestoTrabajoId], references: [id])
-  fecha             DateTime @db.Date
+  puestoTrabajo     PuestoTrabajo?       @relation(fields: [puestoTrabajoId], references: [id])
+  fecha             DateTime             @db.Date
   sector            SectorATS?
   turno             TurnoType
   usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id])
+  usuario           Usuario              @relation(fields: [usuarioId], references: [id])
   iniciales         String
   horaInicio        String
   horaTermino       String?
   totalHoras        Float?
   totalHorasStr     String?
   tipoActividad     TipoActividadControl
-  esEntrenamiento   Boolean  @default(false)
-  esExamen          Boolean  @default(false)
+  esEntrenamiento   Boolean              @default(false)
+  esExamen          Boolean              @default(false)
   instructorId      String?
-  instructor        Usuario? @relation("InstructorATC6", fields: [instructorId], references: [id])
-  esNocturno        Boolean  @default(false)
-  esDiaInhabil      Boolean  @default(false)
-  esValido          Boolean  @default(true)
+  instructor        Usuario?             @relation("InstructorATC6", fields: [instructorId], references: [id])
+  esNocturno        Boolean              @default(false)
+  esDiaInhabil      Boolean              @default(false)
+  esValido          Boolean              @default(true)
   erroresValidacion String?
   origen            OrigenRegistro
   importadoDesde    String?
   creadoPor         String
   modificadoPor     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   @@unique([fecha, sector, usuarioId, horaInicio])
   @@index([unidadId, fecha])
@@ -365,23 +377,23 @@ enum OrigenRegistro {
 }
 
 model ConsolidadoATC6Mensual {
-  id                String   @id @default(cuid())
-  usuarioId         String
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id])
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  mes               Int
-  año               Int
-  horasSectorO      Float    @default(0)
-  horasSectorN      Float    @default(0)
-  horasSectorON     Float    @default(0)
-  totalHoras        Float    @default(0)
-  cumpleMinimo      Boolean
-  requiereVCP       Boolean
-  alertaGenerada    Boolean  @default(false)
-  alertaEnviadaA    String?
-  calculadoAt       DateTime @default(now())
-  recalculadoAt     DateTime?
+  id             String    @id @default(cuid())
+  usuarioId      String
+  usuario        Usuario   @relation(fields: [usuarioId], references: [id])
+  unidadId       String
+  unidad         Unidad    @relation(fields: [unidadId], references: [id])
+  mes            Int
+  año           Int
+  horasSectorO   Float     @default(0)
+  horasSectorN   Float     @default(0)
+  horasSectorON  Float     @default(0)
+  totalHoras     Float     @default(0)
+  cumpleMinimo   Boolean
+  requiereVCP    Boolean
+  alertaGenerada Boolean   @default(false)
+  alertaEnviadaA String?
+  calculadoAt    DateTime  @default(now())
+  recalculadoAt  DateTime?
 
   @@unique([usuarioId, mes, año])
   @@index([unidadId, mes, año])
@@ -389,13 +401,13 @@ model ConsolidadoATC6Mensual {
 }
 
 model AbreviaturaATCO {
-  id                String   @id @default(cuid())
-  codigo            String   @unique
-  usuarioId         String   @unique
-  usuario           Usuario  @relation(fields: [usuarioId], references: [id])
-  activa            Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id        String   @id @default(cuid())
+  codigo    String   @unique
+  usuarioId String   @unique
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([activa])
 }
@@ -405,39 +417,39 @@ model AbreviaturaATCO {
 // ============================================
 
 model CalculoHorasMensual {
-  id                      String   @id @default(cuid())
-  usuarioId               String
-  usuario                 Usuario  @relation(fields: [usuarioId], references: [id])
-  unidadId                String
-  unidad                  Unidad   @relation(fields: [unidadId], references: [id])
-  mes                     Int
-  año                     Int
-  diasHabiles             Int
-  horasObligadas          Float
-  horasDiurnasOrdinarias  Float    @default(0)
-  horasNocturnasOrdinarias Float   @default(0)
-  horasDiasInhabilesOrdinarias Float @default(0)
-  horasTotalOrdinarias    Float    @default(0)
-  horasFaltantes          Float    @default(0)
-  horasExcedentes         Float    @default(0)
-  horasRecargoNocturno    Float    @default(0)
-  horasRecargoDiasInhabiles Float  @default(0)
-  montoRecargoOrdinario   Decimal  @db.Decimal(10, 2) @default(0)
-  horasExtrasDiurnas      Float    @default(0)
-  horasExtrasNocturnas    Float    @default(0)
-  horasExtrasDiasInhabiles Float   @default(0)
-  montoHorasExtras        Decimal  @db.Decimal(10, 2) @default(0)
-  horasEfectivasControl   Float    @default(0)
-  requiereVCP             Boolean  @default(false)
-  horasDescontadas        Float    @default(0)
-  montoDescuentos         Decimal  @db.Decimal(10, 2) @default(0)
-  totalAPagar             Decimal  @db.Decimal(10, 2) @default(0)
-  estado                  EstadoCalculoHoras
-  aprobadoPor             String?
-  aprobadoAt              DateTime?
-  observaciones           String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  id                           String             @id @default(cuid())
+  usuarioId                    String
+  usuario                      Usuario            @relation(fields: [usuarioId], references: [id])
+  unidadId                     String
+  unidad                       Unidad             @relation(fields: [unidadId], references: [id])
+  mes                          Int
+  año                         Int
+  diasHabiles                  Int
+  horasObligadas               Float
+  horasDiurnasOrdinarias       Float              @default(0)
+  horasNocturnasOrdinarias     Float              @default(0)
+  horasDiasInhabilesOrdinarias Float              @default(0)
+  horasTotalOrdinarias         Float              @default(0)
+  horasFaltantes               Float              @default(0)
+  horasExcedentes              Float              @default(0)
+  horasRecargoNocturno         Float              @default(0)
+  horasRecargoDiasInhabiles    Float              @default(0)
+  montoRecargoOrdinario        Decimal            @default(0) @db.Decimal(10, 2)
+  horasExtrasDiurnas           Float              @default(0)
+  horasExtrasNocturnas         Float              @default(0)
+  horasExtrasDiasInhabiles     Float              @default(0)
+  montoHorasExtras             Decimal            @default(0) @db.Decimal(10, 2)
+  horasEfectivasControl        Float              @default(0)
+  requiereVCP                  Boolean            @default(false)
+  horasDescontadas             Float              @default(0)
+  montoDescuentos              Decimal            @default(0) @db.Decimal(10, 2)
+  totalAPagar                  Decimal            @default(0) @db.Decimal(10, 2)
+  estado                       EstadoCalculoHoras
+  aprobadoPor                  String?
+  aprobadoAt                   DateTime?
+  observaciones                String?
+  createdAt                    DateTime           @default(now())
+  updatedAt                    DateTime           @updatedAt
 
   @@unique([usuarioId, mes, año])
   @@index([unidadId, mes, año])
@@ -458,22 +470,22 @@ enum EstadoCalculoHoras {
 // ============================================
 
 model PuntoFIX {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  codigo            String
-  nombre            String?
-  tipo              TipoPuntoFIX
-  activo            Boolean  @default(true)
-  orden             Int      @default(0)
-  categoria         CategoriaPuntoFIX?
-  latitud           Float?
-  longitud          Float?
-  creadoPor         String
-  modificadoPor     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  operaciones       OperacionPorPunto[]
+  id            String              @id @default(cuid())
+  unidadId      String
+  unidad        Unidad              @relation(fields: [unidadId], references: [id])
+  codigo        String
+  nombre        String?
+  tipo          TipoPuntoFIX
+  activo        Boolean             @default(true)
+  orden         Int                 @default(0)
+  categoria     CategoriaPuntoFIX?
+  latitud       Float?
+  longitud      Float?
+  creadoPor     String
+  modificadoPor String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  operaciones   OperacionPorPunto[]
 
   @@unique([unidadId, codigo])
   @@index([unidadId, activo])
@@ -498,18 +510,18 @@ enum CategoriaPuntoFIX {
 }
 
 model OperacionPorPunto {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  fecha             DateTime @db.Date
-  hora              Int
-  puntoFIXId        String
-  puntoFIX          PuntoFIX @relation(fields: [puntoFIXId], references: [id])
-  cantidad          Int      @default(0)
-  categoria         CategoriaPuntoFIX
-  registradoPor     String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id            String            @id @default(cuid())
+  unidadId      String
+  unidad        Unidad            @relation(fields: [unidadId], references: [id])
+  fecha         DateTime          @db.Date
+  hora          Int
+  puntoFIXId    String
+  puntoFIX      PuntoFIX          @relation(fields: [puntoFIXId], references: [id])
+  cantidad      Int               @default(0)
+  categoria     CategoriaPuntoFIX
+  registradoPor String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@unique([fecha, hora, puntoFIXId])
   @@index([unidadId, fecha])
@@ -521,39 +533,39 @@ model OperacionPorPunto {
 // ============================================
 
 model ResumenOperacionesDiario {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  fecha             DateTime @db.Date
-  tipoDependencia   TipoDependencia
-  operacionesNAC    Int      @default(0)
-  operacionesINT    Int      @default(0)
-  operacionesTransPub Int    @default(0)
-  operacionesMilitar Int     @default(0)
-  operacionesOtros  Int      @default(0)
-  operacionesSobrevuelo Int  @default(0)
-  operacionesAMS    Int      @default(0)
-  totalNacInt       Int      @default(0)
-  totalGeneral      Int      @default(0)
-  calculadoDesde    OrigenCalculo
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                    String          @id @default(cuid())
+  unidadId              String
+  unidad                Unidad          @relation(fields: [unidadId], references: [id])
+  fecha                 DateTime        @db.Date
+  tipoDependencia       TipoDependencia
+  operacionesNAC        Int             @default(0)
+  operacionesINT        Int             @default(0)
+  operacionesTransPub   Int             @default(0)
+  operacionesMilitar    Int             @default(0)
+  operacionesOtros      Int             @default(0)
+  operacionesSobrevuelo Int             @default(0)
+  operacionesAMS        Int             @default(0)
+  totalNacInt           Int             @default(0)
+  totalGeneral          Int             @default(0)
+  calculadoDesde        OrigenCalculo
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
 
   @@unique([unidadId, fecha, tipoDependencia])
   @@index([fecha])
 }
 
 model ResumenOperacionesHorario {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  fecha             DateTime @db.Date
-  hora              Int
-  tipoDependencia   TipoDependencia
-  operaciones       Int      @default(0)
-  detalleCategoria  Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String          @id @default(cuid())
+  unidadId         String
+  unidad           Unidad          @relation(fields: [unidadId], references: [id])
+  fecha            DateTime        @db.Date
+  hora             Int
+  tipoDependencia  TipoDependencia
+  operaciones      Int             @default(0)
+  detalleCategoria Json?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@unique([unidadId, fecha, hora, tipoDependencia])
   @@index([fecha, hora])
@@ -572,25 +584,25 @@ enum OrigenCalculo {
 }
 
 model EstadisticasMensuales {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  mes               Int
-  año               Int
-  tipoDependencia   TipoDependencia
-  totalOperaciones  Int      @default(0)
-  promedioOperacionesDia Float @default(0)
-  promedioOperacionesHora Float @default(0)
-  horaMayorTrafico  Int?
-  operacionesHMT    Int      @default(0)
-  diaMayorTrafico   Int?
-  operacionesDiaMT  Int      @default(0)
-  fechaDiaMT        DateTime? @db.Date
-  detalleCategoria  Json
-  imatsId           String?
-  imats             IMATS?   @relation(fields: [imatsId], references: [id])
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                      String          @id @default(cuid())
+  unidadId                String
+  unidad                  Unidad          @relation(fields: [unidadId], references: [id])
+  mes                     Int
+  año                    Int
+  tipoDependencia         TipoDependencia
+  totalOperaciones        Int             @default(0)
+  promedioOperacionesDia  Float           @default(0)
+  promedioOperacionesHora Float           @default(0)
+  horaMayorTrafico        Int?
+  operacionesHMT          Int             @default(0)
+  diaMayorTrafico         Int?
+  operacionesDiaMT        Int             @default(0)
+  fechaDiaMT              DateTime?       @db.Date
+  detalleCategoria        Json
+  imatsId                 String?
+  imats                   IMATS?          @relation(fields: [imatsId], references: [id])
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
 
   @@unique([unidadId, mes, año, tipoDependencia])
   @@index([mes, año])
@@ -601,24 +613,24 @@ model EstadisticasMensuales {
 // ============================================
 
 model Incidente {
-  id                String   @id @default(cuid())
+  id                String            @id @default(cuid())
   unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
+  unidad            Unidad            @relation(fields: [unidadId], references: [id])
   fecha             DateTime
   numero            Int
-  descripcion       String   @db.Text
+  descripcion       String            @db.Text
   tipo              TipoIncidente
   gravedad          GravedadIncidente
   callsign          String?
   tipoAeronave      String?
   origen            String?
   destino           String?
-  reportadoREMIN    Boolean  @default(false)
+  reportadoREMIN    Boolean           @default(false)
   fechaReporteREMIN DateTime?
   registradoPor     String
   aprobadoPor       String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   @@index([unidadId, fecha])
 }
@@ -639,20 +651,20 @@ enum GravedadIncidente {
 }
 
 model ProblemaTecnico {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  dependencia       String
-  problema          String   @db.Text
-  inicio            DateTime
-  termino           DateTime?
-  duracion          Float?
-  accionTomada      String   @db.Text
-  resuelto          Boolean  @default(false)
-  reportadoPor      String
-  reportadoDASA     Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id            String    @id @default(cuid())
+  unidadId      String
+  unidad        Unidad    @relation(fields: [unidadId], references: [id])
+  dependencia   String
+  problema      String    @db.Text
+  inicio        DateTime
+  termino       DateTime?
+  duracion      Float?
+  accionTomada  String    @db.Text
+  resuelto      Boolean   @default(false)
+  reportadoPor  String
+  reportadoDASA Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([unidadId, inicio])
 }
@@ -662,33 +674,33 @@ model ProblemaTecnico {
 // ============================================
 
 model IMATS {
-  id                String   @id @default(cuid())
-  unidadId          String
-  unidad            Unidad   @relation(fields: [unidadId], references: [id])
-  mes               Int
-  año               Int
-  estado            EstadoIMATS
-  seccionPersonal   Json
-  seccionIncidentes Json
-  seccionProblemas  Json
-  seccionExtensiones Json
+  id                    String                  @id @default(cuid())
+  unidadId              String
+  unidad                Unidad                  @relation(fields: [unidadId], references: [id])
+  mes                   Int
+  año                  Int
+  estado                EstadoIMATS
+  seccionPersonal       Json
+  seccionIncidentes     Json
+  seccionProblemas      Json
+  seccionExtensiones    Json
   seccionHabilitaciones Json
-  datosEET          Json
-  estadisticasOPS   Json
-  rolTurnosId       String?
-  pdfUrl            String?
-  excelUrl          String?
-  firmadoPor        String?
-  firmadoAt         DateTime?
-  certificadoDigital String?
-  enviadoSSA        Boolean  @default(false)
-  enviadoSSAAt      DateTime?
-  enviadoSSAEmail   String?
-  generadoPor       String
-  generadoAt        DateTime @default(now())
-  actualizadoPor    String?
-  actualizadoAt     DateTime?
-  estadisticas      EstadisticasMensuales[]
+  datosEET              Json
+  estadisticasOPS       Json
+  rolTurnosId           String?
+  pdfUrl                String?
+  excelUrl              String?
+  firmadoPor            String?
+  firmadoAt             DateTime?
+  certificadoDigital    String?
+  enviadoSSA            Boolean                 @default(false)
+  enviadoSSAAt          DateTime?
+  enviadoSSAEmail       String?
+  generadoPor           String
+  generadoAt            DateTime                @default(now())
+  actualizadoPor        String?
+  actualizadoAt         DateTime?
+  estadisticas          EstadisticasMensuales[]
 
   @@unique([unidadId, mes, año])
   @@index([estado])
@@ -702,4 +714,147 @@ enum EstadoIMATS {
   FIRMADO
   ENVIADO_SSA
   RECHAZADO
+}
+
+// ========================================
+// MÓDULO DE MÉTRICAS - HORAS EXTRAORDINARIAS
+// ========================================
+
+// 1. Configuración por Unidad
+model ConfiguracionUnidad {
+  id                     String   @id @default(cuid())
+  unidadId               String   @unique
+  jornadaMensualEstandar Int      @default(180) // horas
+  porcentajePagoHE       Decimal  @default(70) @db.Decimal(5, 2) // 70.00%
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  unidad Unidad @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+
+  @@map("configuraciones_unidad")
+}
+
+// 2. Saldos de Horas por Funcionario
+model SaldoHorasFuncionario {
+  id                String   @id @default(cuid())
+  funcionarioId     String
+  mes               Int // 1-12
+  anio              Int // 2024, 2025...
+  saldoAnterior     Decimal  @default(0) @db.Decimal(10, 2)
+  horasTrabajadas   Decimal  @default(0) @db.Decimal(10, 2)
+  horasExtras       Decimal  @default(0) @db.Decimal(10, 2)
+  horasCompensables Decimal  @default(0) @db.Decimal(10, 2)
+  horasAcumuladas   Decimal  @default(0) @db.Decimal(10, 2)
+  motivo            String?  @db.VarChar(100)
+  observaciones     String?  @db.Text
+  documentoRespaldo String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  funcionario Usuario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@unique([funcionarioId, mes, anio])
+  @@index([funcionarioId])
+  @@index([anio, mes])
+  @@map("saldos_horas_funcionarios")
+}
+
+// 3. Planillas de Control de Turnos (ANEXO B/C)
+model PlanillaControlTurno {
+  id                    String  @id @default(cuid())
+  funcionarioId         String
+  rolId                 String
+  mes                   Int
+  anio                  Int
+  jornadaLegalMensual   Decimal @db.Decimal(10, 2)
+  diasHabiles           Int
+  totalHorasDiurnas     Decimal @default(0) @db.Decimal(10, 2)
+  totalHorasNocturnas   Decimal @default(0) @db.Decimal(10, 2)
+  totalHorasExtras      Decimal @default(0) @db.Decimal(10, 2)
+  horasCompensadas      Decimal @default(0) @db.Decimal(10, 2)
+  tienePermisoLactancia Boolean @default(false)
+  horasPermisoLactancia Decimal @default(0) @db.Decimal(10, 2)
+  estado                String  @default("PENDIENTE") @db.VarChar(20)
+
+  firmaFuncionarioAt DateTime?
+  firmaFuncionarioIp String?   @db.VarChar(45)
+  firmaEncPersonalAt DateTime?
+  firmaEncPersonalId String?
+  firmaJefeUnidadAt  DateTime?
+  firmaJefeUnidadId  String?
+
+  pdfGeneradoUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  funcionario     Usuario              @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+  rol             PublicacionTurnos    @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  detallesDiarios DetalleDiarioTurno[]
+
+  @@unique([funcionarioId, mes, anio])
+  @@index([rolId])
+  @@index([estado])
+  @@index([anio, mes])
+  @@map("planillas_control_turnos")
+}
+
+// 4. Detalle Diario de Turnos
+model DetalleDiarioTurno {
+  id             String   @id @default(cuid())
+  planillaId     String
+  fecha          DateTime @db.Date
+  horarioInicio  String?  @db.VarChar(5)
+  horarioFin     String?  @db.VarChar(5)
+  horasDiurnas   Decimal  @default(0) @db.Decimal(5, 2)
+  horasNocturnas Decimal  @default(0) @db.Decimal(5, 2)
+  horasAusencia  Decimal  @default(0) @db.Decimal(5, 2)
+  tipoAusencia   String?  @db.VarChar(20)
+  observaciones  String?  @db.Text
+  esFeriado      Boolean  @default(false)
+  esSabado       Boolean  @default(false)
+  esDomingo      Boolean  @default(false)
+
+  planilla PlanillaControlTurno @relation(fields: [planillaId], references: [id], onDelete: Cascade)
+
+  @@unique([planillaId, fecha])
+  @@index([planillaId])
+  @@index([fecha])
+  @@map("detalles_diarios_turnos")
+}
+
+// 5. Historial de Compensaciones (ANEXO G)
+model HistorialCompensacion {
+  id               String    @id @default(cuid())
+  funcionarioId    String
+  mes              Int
+  anio             Int
+  horasCompensadas Decimal   @db.Decimal(10, 2)
+  fechaDevolucion  DateTime  @db.Date
+  mesGeneracion    String    @db.VarChar(50)
+  numeroResolucion String?   @db.VarChar(50)
+  fechaResolucion  DateTime? @db.Date
+  saldoAnterior    Decimal   @default(0) @db.Decimal(10, 2)
+  saldoTotal       Decimal   @db.Decimal(10, 2)
+  createdAt        DateTime  @default(now())
+
+  funcionario Usuario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@index([funcionarioId])
+  @@index([anio, mes])
+  @@map("historial_compensaciones")
+}
+
+// 6. Configuración de Métricas Visibles por Usuario
+model ConfiguracionMetricas {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  metricasVisibles Json
+  ordenMetricas    Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("configuraciones_metricas")
 }
