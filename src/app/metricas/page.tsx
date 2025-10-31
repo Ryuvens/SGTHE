@@ -12,7 +12,7 @@ export default async function MetricasPage() {
     redirect('/login');
   }
 
-  // Obtener la unidad del usuario
+  // Obtener el usuario completo con unidad
   const usuario = await prisma.usuario.findUnique({
     where: { id: session.user.id },
     include: {
@@ -25,9 +25,23 @@ export default async function MetricasPage() {
     },
   });
 
-  if (!usuario?.unidad) {
+  if (!usuario) {
+    redirect('/login');
+  }
+
+  // Preparar datos del usuario para AppLayout
+  const userData = {
+    id: usuario.id,
+    nombre: usuario.nombre,
+    apellido: usuario.apellido || '',
+    email: usuario.email,
+    rol: usuario.rol,
+    image: usuario.image,
+  };
+
+  if (!usuario.unidad) {
     return (
-      <AppLayout>
+      <AppLayout user={userData}>
         <Card>
           <CardHeader>
             <CardTitle>Error</CardTitle>
@@ -41,7 +55,7 @@ export default async function MetricasPage() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout user={userData}>
       <PanelMetricas 
         unidadId={usuario.unidad.id} 
         nombreUnidad={usuario.unidad.nombre}

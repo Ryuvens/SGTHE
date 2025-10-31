@@ -72,15 +72,51 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mostrarOpcionales, setMostrarOpcionales] = useState(false);
+  const [configuracionCargada, setConfiguracionCargada] = useState(false);
+  const [ordenMetricas, setOrdenMetricas] = useState(['HT', 'HE', 'SA', 'HCP', 'HAC']);
   const [modalConfigAbierto, setModalConfigAbierto] = useState(false);
   const [modalInfoAbierto, setModalInfoAbierto] = useState(false);
   const [metricaSeleccionada, setMetricaSeleccionada] = useState<Metrica | null>(null);
 
-  // Cargar datos cuando cambia mes, año o unidad
+  // Cargar configuración del usuario al montar
   useEffect(() => {
-    cargarMetricas();
+    cargarConfiguracionUsuario();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mes, anio, unidadId, mostrarOpcionales]);
+  }, []);
+
+  // Cargar datos cuando cambia mes, año, unidad o configuración
+  useEffect(() => {
+    if (configuracionCargada) {
+      cargarMetricas();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mes, anio, unidadId, mostrarOpcionales, configuracionCargada]);
+
+  const cargarConfiguracionUsuario = async () => {
+    try {
+      const response = await fetch('/api/metricas/usuario-config');
+      if (response.ok) {
+        const config = await response.json();
+        const metricasVisibles = config.metricasVisibles as string[];
+        const ordenMetricas = config.ordenMetricas as number[];
+        
+        // Crear array ordenado de métricas según la configuración
+        const metricasOrdenadas = ordenMetricas.map((index) => metricasVisibles[index]);
+        
+        // Verificar si tiene alguna métrica opcional activa
+        const tieneOpcionales = metricasVisibles.some(m => 
+          ['TD', 'TN', 'DT', 'PC'].includes(m)
+        );
+        
+        setMostrarOpcionales(tieneOpcionales);
+        setOrdenMetricas(metricasOrdenadas);
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración:', error);
+    } finally {
+      setConfiguracionCargada(true);
+    }
+  };
 
   const cargarMetricas = async () => {
     try {
@@ -150,6 +186,46 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
   const abrirInfoMetrica = (metrica: Metrica) => {
     setMetricaSeleccionada(metrica);
     setModalInfoAbierto(true);
+  };
+
+  const renderHeaders = () => {
+    return ordenMetricas.map((metricaCodigo) => (
+      <TableHead key={metricaCodigo}>
+        {metricaCodigo}
+      </TableHead>
+    ));
+  };
+
+  const renderMetricasCells = (metrica: MetricasFuncionario) => {
+    return ordenMetricas.map((metricaCodigo) => {
+      const valor = metrica[metricaCodigo as keyof MetricasFuncionario];
+      
+      // Formatear el valor según el tipo de métrica
+      let valorFormateado: string;
+      if (metricaCodigo === 'PC' && typeof valor === 'number') {
+        valorFormateado = `${valor.toFixed(1)}%`;
+      } else if (typeof valor === 'number') {
+        valorFormateado = valor.toFixed(1);
+      } else {
+        valorFormateado = valor?.toString() || '0';
+      }
+      
+      // Aplicar estilos especiales a HAC
+      const esHAC = metricaCodigo === 'HAC';
+      const valorNumerico = typeof valor === 'number' ? valor : 0;
+      
+      return (
+        <TableCell
+          key={metricaCodigo}
+          className={cn(
+            esHAC && valorNumerico < 0 && 'text-red-600 font-bold',
+            esHAC && valorNumerico > 10 && 'text-orange-600 font-medium'
+          )}
+        >
+          {valorFormateado}
+        </TableCell>
+      );
+    });
   };
 
   return (
@@ -308,11 +384,11 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
 
       {/* Configuración actual */}
       {datos && (
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-sm">
-              <Info className="h-4 w-4 text-blue-600" />
-              <span>
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-blue-900 dark:text-blue-100">
                 💡 Configuración actual: {datos.porcentajePago}% pago /{' '}
                 {100 - datos.porcentajePago}% acumulación | Jornada estándar:{' '}
                 {datos.jornadaEstandar}h
@@ -348,19 +424,7 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nombre</TableHead>
-                    <TableHead>HT</TableHead>
-                    <TableHead>HE</TableHead>
-                    <TableHead>SA</TableHead>
-                    <TableHead>HCP</TableHead>
-                    <TableHead>HAC</TableHead>
-                    {mostrarOpcionales && (
-                      <>
-                        <TableHead>TD</TableHead>
-                        <TableHead>TN</TableHead>
-                        <TableHead>DT</TableHead>
-                        <TableHead>%C</TableHead>
-                      </>
-                    )}
+                    {renderHeaders()}
                     <TableHead>Alertas</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -372,26 +436,7 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
                         <TableCell className="font-medium">
                           {metrica.funcionario.nombre} {metrica.funcionario.apellido}
                         </TableCell>
-                        <TableCell>{metrica.HT.toFixed(1)}</TableCell>
-                        <TableCell>{metrica.HE.toFixed(1)}</TableCell>
-                        <TableCell>{metrica.SA.toFixed(1)}</TableCell>
-                        <TableCell>{metrica.HCP.toFixed(1)}</TableCell>
-                        <TableCell
-                          className={cn(
-                            metrica.HAC < 0 && 'text-red-600 font-bold',
-                            metrica.HAC > 10 && 'text-orange-600'
-                          )}
-                        >
-                          {metrica.HAC.toFixed(1)}
-                        </TableCell>
-                        {mostrarOpcionales && (
-                          <>
-                            <TableCell>{metrica.TD || 0}</TableCell>
-                            <TableCell>{metrica.TN || 0}</TableCell>
-                            <TableCell>{metrica.DT || 0}</TableCell>
-                            <TableCell>{metrica.PC?.toFixed(1) || 0}%</TableCell>
-                          </>
-                        )}
+                        {renderMetricasCells(metrica)}
                         <TableCell>
                           {alerta && (
                             <Badge variant={alerta.tipo === 'negativo' ? 'destructive' : 'outline'}>
@@ -422,7 +467,8 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
         open={modalConfigAbierto}
         onOpenChange={setModalConfigAbierto}
         onGuardar={() => {
-          cargarMetricas();
+          cargarConfiguracionUsuario(); // Recargar configuración primero
+          cargarMetricas(); // Luego recargar datos
         }}
       />
 
