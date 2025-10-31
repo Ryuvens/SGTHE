@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export interface MetricasFuncionario {
   funcionarioId: string;
@@ -57,7 +58,7 @@ export async function calcularMetricasUnidad(
       id: 'default',
       unidadId,
       jornadaMensualEstandar: 180,
-      porcentajePagoHE: 70,
+      porcentajePagoHE: new Prisma.Decimal(70),
       createdAt: new Date(),
       updatedAt: new Date(),
     };

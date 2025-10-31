@@ -49,6 +49,7 @@ export default function ModalConfiguracionUnidad({
     if (open) {
       cargarConfiguracion();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, unidadId]);
 
   const cargarConfiguracion = async () => {

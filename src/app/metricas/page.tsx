@@ -36,7 +36,7 @@ export default async function MetricasPage() {
     apellido: usuario.apellido || '',
     email: usuario.email,
     rol: usuario.rol,
-    image: usuario.image,
+    image: null, // El modelo Usuario no tiene campo image
   };
 
   if (!usuario.unidad) {

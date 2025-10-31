@@ -65,6 +65,7 @@ export default function ModalAjustarSaldos({
     if (open) {
       cargarSaldos();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, unidadId, mes, anio]);
 
   const cargarSaldos = async () => {
