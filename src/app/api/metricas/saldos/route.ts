@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Crear nuevo saldo
+// POST - Crear nuevo saldo o guardar múltiples ajustes
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -99,6 +99,72 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Si viene un array de ajustes, procesar múltiples ajustes
+    if (body.ajustes && Array.isArray(body.ajustes)) {
+      const { ajustes } = body;
+
+      // Validar cada ajuste
+      for (const ajuste of ajustes) {
+        if (
+          !ajuste.funcionarioId ||
+          !ajuste.mes ||
+          !ajuste.anio ||
+          ajuste.saldoAnterior === undefined
+        ) {
+          return NextResponse.json(
+            { error: 'Datos incompletos en los ajustes' },
+            { status: 400 }
+          );
+        }
+
+        // Validar rango
+        if (ajuste.saldoAnterior < -999.9 || ajuste.saldoAnterior > 999.9) {
+          return NextResponse.json(
+            { error: 'El saldo debe estar entre -999.9 y 999.9' },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Guardar todos los ajustes usando transacción
+      const resultado = await prisma.$transaction(
+        ajustes.map((ajuste: any) =>
+          prisma.saldoHorasFuncionario.upsert({
+            where: {
+              funcionarioId_mes_anio: {
+                funcionarioId: ajuste.funcionarioId,
+                mes: ajuste.mes,
+                anio: ajuste.anio,
+              },
+            },
+            update: {
+              saldoAnterior: ajuste.saldoAnterior,
+              motivo: ajuste.motivo || 'Ajuste manual',
+              updatedAt: new Date(),
+            },
+            create: {
+              funcionarioId: ajuste.funcionarioId,
+              mes: ajuste.mes,
+              anio: ajuste.anio,
+              saldoAnterior: ajuste.saldoAnterior,
+              horasTrabajadas: 0,
+              horasExtras: 0,
+              horasCompensables: 0,
+              horasAcumuladas: 0,
+              motivo: ajuste.motivo || 'Ajuste manual',
+            },
+          })
+        )
+      );
+
+      return NextResponse.json({
+        success: true,
+        ajustesGuardados: resultado.length,
+      });
+    }
+
+    // Si viene un objeto único, procesar como saldo individual (compatibilidad)
     const validacion = saldoSchema.safeParse(body);
 
     if (!validacion.success) {

@@ -107,7 +107,24 @@ export async function calcularMetricasUnidad(
     },
   });
 
-  // 4. Obtener saldos anteriores (del mes anterior)
+  // 4. Obtener ajustes manuales para el mes actual (si existen)
+  const ajustesManuales = await prisma.saldoHorasFuncionario.findMany({
+    where: {
+      funcionarioId: {
+        in: funcionarios.map(f => f.id),
+      },
+      mes: mes,
+      anio: anio,
+      motivo: { not: null }, // Solo considerar ajustes manuales (con motivo)
+    },
+  });
+
+  // Crear un mapa de ajustes manuales por funcionario
+  const ajustesMap = new Map(
+    ajustesManuales.map(a => [a.funcionarioId, Number(a.saldoAnterior)])
+  );
+
+  // 5. Obtener HAC del mes anterior para calcular SA automático (si no hay ajuste manual)
   const mesAnterior = mes === 1 ? 12 : mes - 1;
   const anioAnterior = mes === 1 ? anio - 1 : anio;
 
@@ -121,12 +138,12 @@ export async function calcularMetricasUnidad(
     },
   });
 
-  // Crear un mapa de saldos anteriores
+  // Crear un mapa de saldos anteriores (HAC del mes anterior)
   const saldosMap = new Map(
     saldosAnteriores.map(s => [s.funcionarioId, Number(s.horasAcumuladas)])
   );
 
-  // 5. Calcular métricas por funcionario
+  // 6. Calcular métricas por funcionario
   const metricas: MetricasFuncionario[] = [];
   let totales = { HT: 0, HE: 0, SA: 0, HCP: 0, HAC: 0 };
 
@@ -149,7 +166,11 @@ export async function calcularMetricasUnidad(
     const HE = Math.max(0, HT - jornadaEstandar);
 
     // Obtener SA (Saldo Anterior)
-    const SA = saldosMap.get(funcionario.id) || 0;
+    // Prioridad: 1. Ajuste manual del mes actual, 2. HAC del mes anterior
+    const ajusteManual = ajustesMap.get(funcionario.id);
+    const SA = ajusteManual !== undefined 
+      ? ajusteManual 
+      : (saldosMap.get(funcionario.id) || 0);
 
     // Calcular HCP (Horas Compensables - a pagar)
     const HCP = (HE * porcentajePago) / 100;

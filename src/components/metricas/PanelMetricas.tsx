@@ -19,10 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Settings, Download, AlertTriangle, Info } from 'lucide-react';
+import { Settings, Download, AlertTriangle, Info, DollarSign, SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModalConfiguracionMetricas from './ModalConfiguracionMetricas';
 import ModalInfoMetrica from './ModalInfoMetrica';
+import ModalAjustarSaldos from './ModalAjustarSaldos';
+import ModalConfiguracionUnidad from './ModalConfiguracionUnidad';
 import type { Metrica } from '@/lib/constants/metricas';
 
 interface MetricasFuncionario {
@@ -77,6 +79,8 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
   const [modalConfigAbierto, setModalConfigAbierto] = useState(false);
   const [modalInfoAbierto, setModalInfoAbierto] = useState(false);
   const [metricaSeleccionada, setMetricaSeleccionada] = useState<Metrica | null>(null);
+  const [modalSaldosAbierto, setModalSaldosAbierto] = useState(false);
+  const [modalConfigUnidadAbierto, setModalConfigUnidadAbierto] = useState(false);
 
   // Cargar configuración del usuario al montar
   useEffect(() => {
@@ -237,9 +241,17 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
           <p className="text-sm text-muted-foreground">{nombreUnidad}</p>
         </CardHeader>
         <CardContent className="flex gap-2">
+          <Button variant="outline" onClick={() => setModalSaldosAbierto(true)}>
+            <DollarSign className="h-4 w-4 mr-2" />
+            Ajustar saldos
+          </Button>
           <Button variant="outline" onClick={() => setModalConfigAbierto(true)}>
             <Settings className="h-4 w-4 mr-2" />
             Configurar métricas
+          </Button>
+          <Button variant="outline" onClick={() => setModalConfigUnidadAbierto(true)}>
+            <SlidersHorizontal className="h-4 w-4 mr-2" />
+            Configuración de unidad
           </Button>
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
@@ -477,6 +489,29 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
         metrica={metricaSeleccionada}
         open={modalInfoAbierto}
         onOpenChange={setModalInfoAbierto}
+      />
+
+      {/* Modal de ajuste de saldos */}
+      <ModalAjustarSaldos
+        open={modalSaldosAbierto}
+        onOpenChange={setModalSaldosAbierto}
+        unidadId={unidadId}
+        mes={mes}
+        anio={anio}
+        onSaldosActualizados={() => {
+          cargarMetricas();
+        }}
+      />
+
+      {/* Modal de configuración de unidad */}
+      <ModalConfiguracionUnidad
+        open={modalConfigUnidadAbierto}
+        onOpenChange={setModalConfigUnidadAbierto}
+        unidadId={unidadId}
+        nombreUnidad={nombreUnidad}
+        onConfiguracionActualizada={() => {
+          cargarMetricas();
+        }}
       />
     </div>
   );
