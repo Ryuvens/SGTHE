@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
 import { format, eachDayOfInterval, getDay, startOfMonth, endOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X, Copy, Clipboard, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Save, ArrowLeft, Users, AlertCircle, Loader2, TrendingUp, X, Copy, Clipboard, Check, ChevronLeft, ChevronRight, Info } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -835,10 +835,15 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       }
     })
     
+    // PRO DRH 22: Sub-total mensual debe truncarse a enteros (no redondear)
+    horasTrabajadas = Math.floor(horasTrabajadas)
+    horasDevueltas = Math.floor(horasDevueltas)
+    
     // Calcular balance usando el servicio oficial PRO DRH 22
+    // Balance = HT - HLM (positivo = horas extras, negativo = horas faltantes)
     const HT_ajustado = horasTrabajadas - horasDevueltas
-    const balanceHLM = calculadorPRODRH22.calcularBalanceHLM(HLM, HT_ajustado)
-    const horasExtras = Math.max(0, -balanceHLM) // Si balance es negativo, son HE
+    const balanceHLM = Math.round((HT_ajustado - HLM) * 10) / 10 // Redondear a 1 decimal
+    const horasExtras = Math.round(Math.max(0, balanceHLM) * 10) / 10 // Si balance es positivo, son HE
     
     return {
       HLM,
@@ -849,7 +854,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       horasExtras,
       alertas: [],
       horasSemanales,
-      estado: balanceHLM < 0 ? 'sobrecarga' : 'ok'
+      estado: balanceHLM > 40 ? 'sobrecarga' : balanceHLM < -10 ? 'alerta' : 'ok'
     }
   }
 
@@ -1044,7 +1049,27 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       <th className="text-left p-2">Funcionario</th>
                       <th className="text-center p-2">H. Trabajadas</th>
                       <th className="text-center p-2">H. Devueltas</th>
-                      <th className="text-center p-2">Balance HLM</th>
+                      <th className="text-center p-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger className="inline-flex items-center gap-1">
+                              Balance HLM
+                              <Info className="h-3 w-3" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="font-semibold">Balance = HT - HLM</p>
+                              <p className="text-xs mt-1">
+                                • Positivo (+): Horas extraordinarias a compensar<br/>
+                                • Negativo (-): Horas faltantes (posible descuento)<br/>
+                                • Cero (0): Jornada cumplida exacta
+                              </p>
+                              <p className="text-xs mt-1 text-muted-foreground">
+                                Según PRO DRH 22 Cap. 3
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </th>
                       <th className="text-center p-2">H. Extras</th>
                       <th className="text-center p-2">Sem 1</th>
                       <th className="text-center p-2">Sem 2</th>
@@ -1068,22 +1093,22 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           <td className="p-2 font-medium">
                             {usuario.nombre} {usuario.apellido}
                           </td>
-                          <td className="text-center p-2">{m.horasTrabajadas}h</td>
+                          <td className="text-center p-2">{Math.floor(m.horasTrabajadas)}h</td>
                           <td className="text-center p-2 text-blue-600">
-                            {m.horasDevueltas > 0 ? `-${m.horasDevueltas}h` : '-'}
+                            {m.horasDevueltas > 0 ? `-${Math.floor(m.horasDevueltas)}h` : '-'}
                           </td>
                           <td className={cn(
                             "text-center p-2 font-bold",
-                            m.balanceHLM < 0 ? "text-red-600" : 
-                            m.balanceHLM > 20 ? "text-yellow-600" : 
-                            "text-green-600"
+                            m.balanceHLM > 40 ? "text-red-600" : // Muchas HE (sobrecarga)
+                            m.balanceHLM < -10 ? "text-yellow-600" : // Faltan horas
+                            "text-green-600" // Normal (-10 a +40)
                           )}>
-                            {m.balanceHLM > 0 ? '+' : ''}{m.balanceHLM}h
+                            {m.balanceHLM > 0 ? '+' : ''}{m.balanceHLM.toFixed(1)}h
                           </td>
                           <td className="text-center p-2">
                             {m.horasExtras > 0 && (
                               <span className="text-orange-600 font-semibold">
-                                +{m.horasExtras}h
+                                +{m.horasExtras.toFixed(1)}h
                               </span>
                             )}
                           </td>
@@ -1126,14 +1151,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     <tr className="bg-muted font-semibold">
                       <td className="p-2">TOTALES</td>
                       <td className="text-center p-2">
-                        {usuarios.reduce((sum, u) => 
+                        {Math.floor(usuarios.reduce((sum, u) => 
                           sum + calcularMetricasUsuario(u.id).horasTrabajadas, 0
-                        )}h
+                        ))}h
                       </td>
                       <td className="text-center p-2 text-blue-600">
-                        -{usuarios.reduce((sum, u) => 
+                        -{Math.floor(usuarios.reduce((sum, u) => 
                           sum + calcularMetricasUsuario(u.id).horasDevueltas, 0
-                        )}h
+                        ))}h
                       </td>
                       <td className="text-center p-2" colSpan={6}>
                         Promedio: {usuarios.length > 0 ? Math.round(usuarios.reduce((sum, u) => 
