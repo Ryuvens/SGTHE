@@ -1025,7 +1025,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Panel de Métricas PRO DRH 22
+                  Panel de Métricas PRO DRH 22: Cálculo de horas extraordinarias y sistema compensatorio
                 </CardTitle>
                 <Button 
                   size="sm" 
@@ -1158,14 +1158,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     HLM: {usuarios.length > 0 ? calcularMetricasUsuario(usuarios[0].id).HLM : 0}h/mes
                   </span>
                   <span className="text-xs text-blue-600 dark:text-blue-400">
-                    ({usuarios.length > 0 ? calcularMetricasUsuario(usuarios[0].id).diasHabiles : 0} días × 8.8)
+                    ({usuarios.length > 0 ? calcularMetricasUsuario(usuarios[0].id).diasHabiles : 0} días hábiles × 8.8)
                   </span>
                 </div>
                 <span className="text-sm text-blue-600 dark:text-blue-400">
                   🔄 Descansos: Devuelven horas
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  PRO DRH 22 - Sistema de Horas Extraordinarias
+                  PRO DRH 22: Cálculo de horas extraordinarias y sistema compensatorio
                 </span>
               </div>
             </CardContent>
