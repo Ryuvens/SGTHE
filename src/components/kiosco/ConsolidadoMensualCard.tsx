@@ -167,7 +167,7 @@ export function ConsolidadoMensualCard({
                 </h4>
                 <p className="mt-1 text-sm text-orange-800">
                   No has alcanzado las {horasMinimas} horas mínimas mensuales requeridas 
-                  según DAN 11. Debes someterte a una Verificación de la Competencia Profesional 
+                  según normativa. Debes someterte a una Verificación de la Competencia Profesional 
                   para demostrar tus competencias. Esta verificación será documentada en el 
                   formulario ATC-14 y se adjuntará al Informe Mensual de Actividades.
                 </p>
@@ -185,7 +185,7 @@ export function ConsolidadoMensualCard({
           <p className="font-medium">💡 Información</p>
           <ul className="mt-2 space-y-1 pl-4">
             <li>• Las horas se calculan automáticamente desde tus registros ATC-6</li>
-            <li>• Se requieren mínimo {horasMinimas} horas mensuales para mantener pericia (DAN 11)</li>
+            <li>• Se requieren mínimo {horasMinimas} horas mensuales para mantener pericia</li>
             <li>• Este consolidado se actualiza en tiempo real con cada registro</li>
           </ul>
         </div>

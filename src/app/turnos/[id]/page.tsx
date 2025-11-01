@@ -166,7 +166,7 @@ export default async function RolDetallePage({ params }: PageProps) {
           <CardContent>
             <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">
-              Alertas DAN 11
+              Alertas
             </p>
           </CardContent>
         </Card>

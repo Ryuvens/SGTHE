@@ -1,7 +1,7 @@
 // src/data/turnos-config.ts
 import { ConfiguracionTurno, TipoTurno } from '@/types/turnos'
 
-// Configuraciones de turnos según glosario oficial DAN 11
+// Configuraciones de turnos según glosario oficial
 export const CONFIGURACIONES_TURNOS: Record<TipoTurno, ConfiguracionTurno> = {
   DIA_COMPLETO: {
     tipo: 'DIA_COMPLETO',

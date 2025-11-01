@@ -52,7 +52,7 @@ export function OpcionesAvanzadas({ publicacionId }: { publicacionId: string }) 
       label: 'Optimizar distribución',
       icon: Users,
       action: () => {
-        toast.info('Funcionalidad en desarrollo: Optimización automática según DAN 11')
+        toast.info('Funcionalidad en desarrollo: Optimización automática de turnos')
       }
     },
     { type: 'separator' as const },

@@ -89,7 +89,7 @@ export function consolidarHorasPorSector(
 }
 
 /**
- * Valida si un ATCO cumple con el mínimo de horas mensuales (DAN 11)
+ * Valida si un ATCO cumple con el mínimo de horas mensuales
  */
 export interface ValidacionPericia {
   cumpleMinimo: boolean

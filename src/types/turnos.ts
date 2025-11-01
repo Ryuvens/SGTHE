@@ -1,6 +1,6 @@
 // src/types/turnos.ts
 
-// Tipos de turnos según glosario oficial DAN 11
+// Tipos de turnos según glosario oficial
 export type TipoTurno = 
   | 'DIA_COMPLETO'
   | 'DIA_LARGO'
@@ -64,7 +64,7 @@ export interface ResumenMensual {
   saldoActual: number
 }
 
-// Configuración de turno según glosario DAN 11
+// Configuración de turno según glosario oficial
 export interface ConfiguracionTurno {
   tipo: TipoTurno
   nombre: string

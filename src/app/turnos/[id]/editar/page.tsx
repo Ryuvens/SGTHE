@@ -789,7 +789,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
   }
 
-  // Calcular métricas de HLM y validaciones DAN 11 por usuario
+  // Calcular métricas de HLM por usuario
   function calcularMetricasUsuario(usuarioId: string) {
     const todasLasAsignaciones = Array.from(asignaciones.values())
     const turnosUsuario = todasLasAsignaciones.filter(a => a.usuarioId === usuarioId)
@@ -827,17 +827,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       const semana = Math.floor((dia - 1) / 7)
       if (semana < 5) {
         horasSemanales[semana] += horas
-      }
-    })
-    
-    // Validaciones DAN 11
-    if (horasTrabajadas > 192) {
-      alertas.push(`Excede 192h/mes (${horasTrabajadas}h)`)
-    }
-    
-    horasSemanales.forEach((horas, semana) => {
-      if (horas > 54) {
-        alertas.push(`Semana ${semana + 1}: ${horas}h (máx 54h)`)
       }
     })
     
@@ -1027,7 +1016,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Panel de Métricas HLM y Validaciones DAN 11
+                  Panel de Métricas HLM
                 </CardTitle>
                 <Button 
                   size="sm" 
@@ -1154,9 +1143,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               
               {/* Leyenda */}
               <div className="mt-4 p-3 bg-muted rounded-lg text-xs">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div>📊 <strong>HLM:</strong> Meta 168h/mes</div>
-                  <div>⚠️ <strong>DAN 11:</strong> Máx 192h/mes, 54h/sem</div>
                   <div>🔄 <strong>Descansos:</strong> Devuelven horas</div>
                 </div>
               </div>
@@ -1641,7 +1629,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
  * - CP-007.10: Drag & Drop de funcionarios (reordenar)
  * - CP-007.11: Exportación PDF/Excel
  * - CP-007.12: Sistema de notificaciones
- * - CP-007.13: Validaciones DAN 11 en tiempo real
+ * - CP-007.13: Validaciones de horas en tiempo real
  * 
  * FIXES CRÍTICOS RESUELTOS:
  * - FIX 20: Conditional React Hooks en Vercel

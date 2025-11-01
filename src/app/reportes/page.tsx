@@ -43,7 +43,7 @@ export default async function ReportesPage() {
             <ul className="list-disc list-inside mt-3 space-y-2 text-sm text-muted-foreground">
               <li>Reporte de turnos por período</li>
               <li>Reporte de horas extraordinarias</li>
-              <li>Estadísticas de fatiga (DAN 11)</li>
+              <li>Estadísticas de carga laboral</li>
               <li>Resumen de bonificaciones</li>
               <li>Gráficos y visualizaciones</li>
               <li>Exportación a PDF, Excel y CSV</li>

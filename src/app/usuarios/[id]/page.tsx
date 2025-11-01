@@ -186,7 +186,7 @@ export default async function UsuarioDetailPage({ params }: UsuarioDetailPagePro
         <CardHeader>
           <CardTitle>Habilitaciones</CardTitle>
           <CardDescription>
-            Certificaciones y habilitaciones del controlador según DAN 11
+            Certificaciones y habilitaciones del controlador
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -235,7 +235,7 @@ export default async function UsuarioDetailPage({ params }: UsuarioDetailPagePro
                     )}
                     {hab.requierePericia && (
                       <p className="text-xs font-medium text-orange-600 dark:text-orange-400 mt-2">
-                        Requiere {hab.horasMinimasMes}h/mes (DAN 11)
+                        Requiere {hab.horasMinimasMes}h/mes
                       </p>
                     )}
                   </div>
