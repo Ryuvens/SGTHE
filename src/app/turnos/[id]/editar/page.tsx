@@ -43,6 +43,8 @@ import {
   getTiposTurno
 } from '@/lib/actions/turnos'
 import { cn } from '@/lib/utils'
+import { calculadorPRODRH22 } from '@/services/prodrh22/calculoMetricas'
+import type { MetricasPRODRH22 } from '@/types/prodrh22/metricas.types'
 
 interface Asignacion {
   id?: string
@@ -789,10 +791,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
   }
 
-  // Calcular métricas de HLM por usuario
+  // Calcular métricas de HLM por usuario usando servicio PRO DRH 22
   function calcularMetricasUsuario(usuarioId: string) {
     const todasLasAsignaciones = Array.from(asignaciones.values())
     const turnosUsuario = todasLasAsignaciones.filter(a => a.usuarioId === usuarioId)
+    
+    // Calcular días hábiles y HLM usando el servicio oficial
+    const diasHabiles = calculadorPRODRH22.calcularDiasHabiles(publicacion.año, publicacion.mes)
+    const HLM = calculadorPRODRH22.calcularHLM(diasHabiles)
     
     // Horas por tipo de turno según documento oficial
     const HORAS_TURNO: Record<string, number> = {
@@ -812,7 +818,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     let horasTrabajadas = 0
     let horasDevueltas = 0
     const horasSemanales = [0, 0, 0, 0, 0] // 5 semanas máximo
-    const alertas: string[] = []
     
     turnosUsuario.forEach(turno => {
       const codigo = turno.tipoTurno?.codigo || ''
@@ -830,17 +835,21 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       }
     })
     
-    const balanceHLM = 168 - horasTrabajadas + horasDevueltas
-    const horasExtras = Math.max(0, horasTrabajadas - horasDevueltas - 168)
+    // Calcular balance usando el servicio oficial PRO DRH 22
+    const HT_ajustado = horasTrabajadas - horasDevueltas
+    const balanceHLM = calculadorPRODRH22.calcularBalanceHLM(HLM, HT_ajustado)
+    const horasExtras = Math.max(0, -balanceHLM) // Si balance es negativo, son HE
     
     return {
+      HLM,
+      diasHabiles,
       horasTrabajadas,
       horasDevueltas,
       balanceHLM,
       horasExtras,
-      alertas,
+      alertas: [],
       horasSemanales,
-      estado: alertas.length > 0 ? 'alerta' : balanceHLM < 0 ? 'sobrecarga' : 'ok'
+      estado: balanceHLM < 0 ? 'sobrecarga' : 'ok'
     }
   }
 
@@ -1016,7 +1025,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Panel de Métricas HLM
+                  Panel de Métricas PRO DRH 22
                 </CardTitle>
                 <Button 
                   size="sm" 
@@ -1142,11 +1151,22 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               </div>
               
               {/* Leyenda */}
-              <div className="mt-4 p-3 bg-muted rounded-lg text-xs">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>📊 <strong>HLM:</strong> Meta 168h/mes</div>
-                  <div>🔄 <strong>Descansos:</strong> Devuelven horas</div>
+              <div className="mt-4 flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900 rounded-md">
+                  <span className="text-blue-700 dark:text-blue-300">📊</span>
+                  <span className="font-semibold text-blue-700 dark:text-blue-300">
+                    HLM: {usuarios.length > 0 ? calcularMetricasUsuario(usuarios[0].id).HLM : 0}h/mes
+                  </span>
+                  <span className="text-xs text-blue-600 dark:text-blue-400">
+                    ({usuarios.length > 0 ? calcularMetricasUsuario(usuarios[0].id).diasHabiles : 0} días × 8.8)
+                  </span>
                 </div>
+                <span className="text-sm text-blue-600 dark:text-blue-400">
+                  🔄 Descansos: Devuelven horas
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  PRO DRH 22 - Sistema de Horas Extraordinarias
+                </span>
               </div>
             </CardContent>
           </Card>
