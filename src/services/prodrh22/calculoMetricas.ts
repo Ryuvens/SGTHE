@@ -101,6 +101,97 @@ export class CalculadorMetricasPRODRH22 {
   }
 
   /**
+   * Calcula HT (Horas Trabajadas) desde array de asignaciones
+   * Suma todas las duraciones y aplica truncado según PRO DRH 22
+   * 
+   * @param asignaciones - Array de asignaciones de turno
+   * @returns HT truncado a enteros (sin decimales)
+   * 
+   * @example
+   * calcularHTDesdeAsignaciones([{duracion: 9.5}, {duracion: 12.3}])
+   * // Suma: 21.8 → Truncado: 21h
+   */
+  calcularHTDesdeAsignaciones(
+    asignaciones: Array<{ duracion?: number | null; tipoTurno?: { duracionHoras?: number } | null }>
+  ): number {
+    const suma = asignaciones.reduce((total, asignacion) => {
+      const duracion = asignacion.duracion || asignacion.tipoTurno?.duracionHoras || 0;
+      return total + duracion;
+    }, 0);
+    
+    // PRO DRH 22: Truncar HT mensual (sin decimales)
+    return Math.floor(suma);
+  }
+
+  /**
+   * Clasifica horas extraordinarias por tipo según características del turno
+   * PRO DRH 22 distingue entre HE diurnas (recargo 25%), nocturnas (50%) y festivas (50%)
+   * 
+   * @param asignaciones - Array de asignaciones con campos esNocturno, esDiaInhabil, esFestivo
+   * @param HT - Horas trabajadas totales (truncadas)
+   * @param HLM - Horario legal mensual
+   * @returns Objeto con HE clasificadas por tipo
+   * 
+   * @example
+   * clasificarHEPorTipo(asignaciones, 230, 202.4)
+   * // HE_total: 27.6h
+   * // Distribuye según proporción de turnos diurnos/nocturnos/festivos
+   */
+  clasificarHEPorTipo(
+    asignaciones: Array<{ 
+      duracion?: number | null; 
+      tipoTurno?: { duracionHoras?: number } | null;
+      esNocturno?: boolean;
+      esDiaInhabil?: boolean;
+      esFestivo?: boolean;
+    }>,
+    HT: number,
+    HLM: number
+  ): {
+    HE_diurnas: number;
+    HE_nocturnas: number;
+    HE_festivas: number;
+    HE_total: number;
+  } {
+    // Solo hay HE si HT > HLM
+    const HE_total = Math.max(0, HT - HLM);
+    
+    if (HE_total === 0) {
+      return { HE_diurnas: 0, HE_nocturnas: 0, HE_festivas: 0, HE_total: 0 };
+    }
+    
+    // Clasificar turnos por tipo
+    let horasDiurnas = 0;
+    let horasNocturnas = 0;
+    let horasFestivas = 0;
+    
+    for (const asignacion of asignaciones) {
+      const duracion = asignacion.duracion || asignacion.tipoTurno?.duracionHoras || 0;
+      
+      if (asignacion.esDiaInhabil || asignacion.esFestivo) {
+        horasFestivas += duracion;
+      } else if (asignacion.esNocturno) {
+        horasNocturnas += duracion;
+      } else {
+        horasDiurnas += duracion;
+      }
+    }
+    
+    // Calcular proporción de HE por tipo
+    const totalHoras = horasDiurnas + horasNocturnas + horasFestivas;
+    const proporcionDiurnas = totalHoras > 0 ? horasDiurnas / totalHoras : 0;
+    const proporcionNocturnas = totalHoras > 0 ? horasNocturnas / totalHoras : 0;
+    const proporcionFestivas = totalHoras > 0 ? horasFestivas / totalHoras : 0;
+    
+    return {
+      HE_diurnas: Math.round(HE_total * proporcionDiurnas * 10) / 10,
+      HE_nocturnas: Math.round(HE_total * proporcionNocturnas * 10) / 10,
+      HE_festivas: Math.round(HE_total * proporcionFestivas * 10) / 10,
+      HE_total: Math.round(HE_total * 10) / 10
+    };
+  }
+
+  /**
    * Calcula las compensaciones monetarias por horas extraordinarias
    * Basado en PRO DRH 22 Capítulo 1.7
    * 
@@ -138,25 +229,25 @@ export class CalculadorMetricasPRODRH22 {
   }
 
   /**
-   * Calcula el balance entre HLM y HT
-   * Balance positivo = horas faltantes para completar HLM
-   * Balance negativo = horas extraordinarias trabajadas
+   * Calcula el balance entre HT y HLM según PRO DRH 22
+   * Balance positivo (+) = horas extraordinarias a compensar
+   * Balance negativo (-) = horas faltantes (posible descuento)
    * 
-   * @param HLM - Horario Legal Mensual (horas obligatorias)
-   * @param HT - Horas Trabajadas (horas reales)
-   * @returns Balance en horas (HLM - HT)
+   * @param HT - Horas Trabajadas (horas reales trabajadas en el mes)
+   * @param HLM - Horario Legal Mensual (horas obligatorias del mes)
+   * @returns Balance en horas (HT - HLM)
    * 
    * @example
-   * calcularBalanceHLM(202.4, 180.0) // +22.4h (faltaron horas)
-   * calcularBalanceHLM(202.4, 215.0) // -12.6h (horas extraordinarias)
-   * calcularBalanceHLM(202.4, 202.4) // 0.0h (exacto)
+   * calcularBalanceHLM(230.0, 202.4) // +27.6h (horas extras a pagar)
+   * calcularBalanceHLM(180.0, 202.4) // -22.4h (horas faltantes)
+   * calcularBalanceHLM(202.4, 202.4) // 0.0h (jornada exacta)
    */
-  calcularBalanceHLM(HLM: number, HT: number): number {
+  calcularBalanceHLM(HT: number, HLM: number): number {
     if (HLM < 0 || HT < 0) {
       throw new Error('HLM y HT no pueden ser negativos');
     }
     
-    const balance = HLM - HT;
+    const balance = HT - HLM;
     
     // Redondear a 1 decimal
     return Math.round(balance * 10) / 10;
@@ -316,8 +407,8 @@ export class CalculadorMetricasPRODRH22 {
     // HT ajustado (después de deducciones)
     const HT_ajustado = datos.HT - deducciones;
     
-    // Balance HLM
-    const balanceHLM = this.calcularBalanceHLM(HLM, HT_ajustado);
+    // Balance HLM (HT primero, HLM segundo - parámetros corregidos)
+    const balanceHLM = this.calcularBalanceHLM(HT_ajustado, HLM);
     
     // HE total (solo si HT_ajustado > HLM)
     const HE_total = Math.max(0, HT_ajustado - HLM);
@@ -387,6 +478,8 @@ export const calculadorPRODRH22 = new CalculadorMetricasPRODRH22();
 export const {
   calcularHLM,
   calcularDiasHabiles,
+  calcularHTDesdeAsignaciones,
+  clasificarHEPorTipo,
   calcularCompensaciones,
   calcularBalanceHLM,
 } = calculadorPRODRH22;
