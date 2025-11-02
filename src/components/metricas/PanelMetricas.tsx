@@ -33,13 +33,19 @@ interface MetricasFuncionario {
     id: string;
     nombre: string;
     apellido: string;
-    rut: string;
+    rut: string | null;
   };
-  HT: number;
-  HE: number;
-  SA: number;
-  HCP: number;
-  HAC: number;
+  SA: number;           // Saldo Anterior
+  HLM: number;          // Horario Legal Mensual
+  HT: number;           // Horas Trabajadas
+  compensacion: number; // Descansos complementarios
+  HMC: number;          // Horario Mensual Corregido
+  balanceHLM: number;   // Balance HT - HLM
+  HE: number;           // Horas Extras
+  HCP: number;          // Horas Compensables
+  SHE: number;          // Saldo Horas Extras
+  HAC: number;          // Horas Acumuladas
+  // Opcionales
   TD?: number;
   TN?: number;
   DT?: number;
@@ -52,12 +58,18 @@ interface ResumenMetricas {
   anio: number;
   jornadaEstandar: number;
   porcentajePago: number;
+  hlm: number;
   metricas: MetricasFuncionario[];
   totales: {
+    HLM: number;
     HT: number;
+    compensacion: number;
+    HMC: number;
+    balanceHLM: number;
     HE: number;
     SA: number;
     HCP: number;
+    SHE: number;
     HAC: number;
   };
 }
@@ -75,7 +87,9 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
   const [error, setError] = useState<string | null>(null);
   const [mostrarOpcionales, setMostrarOpcionales] = useState(false);
   const [configuracionCargada, setConfiguracionCargada] = useState(false);
-  const [ordenMetricas, setOrdenMetricas] = useState(['HT', 'HE', 'SA', 'HCP', 'HAC']);
+  const [ordenMetricas, setOrdenMetricas] = useState([
+    'SA', 'HLM', 'HT', 'compensacion', 'HMC', 'balanceHLM', 'HE', 'HCP', 'SHE', 'HAC'
+  ]);
   const [modalConfigAbierto, setModalConfigAbierto] = useState(false);
   const [modalInfoAbierto, setModalInfoAbierto] = useState(false);
   const [metricaSeleccionada, setMetricaSeleccionada] = useState<Metrica | null>(null);
@@ -147,6 +161,9 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
     if (metrica.HAC < 0) {
       return { tipo: 'negativo', icono: '🔴', mensaje: 'Saldo negativo' };
     }
+    if (metrica.balanceHLM < 0) {
+      return { tipo: 'deficit', icono: '⚠️', mensaje: `Déficit de ${Math.abs(metrica.balanceHLM).toFixed(1)}h` };
+    }
     if (metrica.HAC > 10) {
       return { tipo: 'acumulacion', icono: '⚠️', mensaje: 'Acumulación alta' };
     }
@@ -173,15 +190,16 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
   );
 
   const contarAlertas = () => {
-    if (!datos) return { negativos: 0, acumulacion: 0 };
+    if (!datos) return { negativos: 0, acumulacion: 0, deficit: 0 };
     
     return datos.metricas.reduce(
       (acc, m) => {
         if (m.HAC < 0) acc.negativos++;
+        else if (m.balanceHLM < 0) acc.deficit++;
         else if (m.HAC > 10) acc.acumulacion++;
         return acc;
       },
-      { negativos: 0, acumulacion: 0 }
+      { negativos: 0, acumulacion: 0, deficit: 0 }
     );
   };
 
@@ -214,16 +232,24 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
         valorFormateado = valor?.toString() || '0';
       }
       
-      // Aplicar estilos especiales a HAC
+      // Aplicar estilos especiales
       const esHAC = metricaCodigo === 'HAC';
+      const esBalanceHLM = metricaCodigo === 'balanceHLM';
+      const esSHE = metricaCodigo === 'SHE';
       const valorNumerico = typeof valor === 'number' ? valor : 0;
       
       return (
         <TableCell
           key={metricaCodigo}
           className={cn(
+            // Estilos para HAC
             esHAC && valorNumerico < 0 && 'text-red-600 font-bold',
-            esHAC && valorNumerico > 10 && 'text-orange-600 font-medium'
+            esHAC && valorNumerico > 10 && 'text-orange-600 font-medium',
+            // Estilos para balanceHLM (negativo = falta horas, rojo)
+            esBalanceHLM && valorNumerico < 0 && 'text-red-600 font-bold',
+            esBalanceHLM && valorNumerico > 0 && 'text-green-600',
+            // Estilos para SHE
+            esSHE && valorNumerico < 0 && 'text-red-600'
           )}
         >
           {valorFormateado}
@@ -312,65 +338,34 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
             <CardTitle>Resumen Global de la Unidad</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-5 gap-4">
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                  HT
-                  <Info 
-                    className="h-3 w-3 cursor-pointer hover:text-primary transition-colors" 
-                    onClick={() => abrirInfoMetrica('HT')}
-                  />
-                </div>
-                <div className="text-2xl font-bold">{datos.totales.HT.toFixed(1)}h</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                  HE
-                  <Info 
-                    className="h-3 w-3 cursor-pointer hover:text-primary transition-colors" 
-                    onClick={() => abrirInfoMetrica('HE')}
-                  />
-                </div>
-                <div className="text-2xl font-bold">{datos.totales.HE.toFixed(1)}h</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                  SA
-                  <Info 
-                    className="h-3 w-3 cursor-pointer hover:text-primary transition-colors" 
-                    onClick={() => abrirInfoMetrica('SA')}
-                  />
-                </div>
-                <div className="text-2xl font-bold">{datos.totales.SA.toFixed(1)}h</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                  HCP
-                  <Info 
-                    className="h-3 w-3 cursor-pointer hover:text-primary transition-colors" 
-                    onClick={() => abrirInfoMetrica('HCP')}
-                  />
-                </div>
-                <div className="text-2xl font-bold">{datos.totales.HCP.toFixed(1)}h</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                  HAC
-                  <Info 
-                    className="h-3 w-3 cursor-pointer hover:text-primary transition-colors" 
-                    onClick={() => abrirInfoMetrica('HAC')}
-                  />
-                </div>
-                <div className="text-2xl font-bold">{datos.totales.HAC.toFixed(1)}h</div>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {['SA', 'HLM', 'HT', 'compensacion', 'HMC', 'balanceHLM', 'HE', 'HCP', 'SHE', 'HAC'].map((metricaCodigo) => {
+                const metricaKey = metricaCodigo as keyof typeof datos.totales;
+                const valor = datos.totales[metricaKey];
+                
+                return (
+                  <div key={metricaCodigo} className="text-center">
+                    <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
+                      {metricaCodigo}
+                      <Info 
+                        className="h-3 w-3 cursor-pointer hover:text-primary transition-colors" 
+                        onClick={() => abrirInfoMetrica(metricaCodigo as Metrica)}
+                      />
+                    </div>
+                    <div className="text-2xl font-bold">
+                      {typeof valor === 'number' ? valor.toFixed(1) : '0.0'}h
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Alertas */}
-      {datos && (alertas.negativos > 0 || alertas.acumulacion > 0) && (
-        <Card className="border-orange-200 bg-orange-50">
+      {datos && (alertas.negativos > 0 || alertas.acumulacion > 0 || alertas.deficit > 0) && (
+        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800">
           <CardContent className="pt-6">
             <div className="flex flex-col gap-2">
               {alertas.acumulacion > 0 && (
@@ -378,6 +373,14 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
                   <span className="text-sm">
                     ⚠️ {alertas.acumulacion} funcionario(s) con acumulación {'>'} 10h
+                  </span>
+                </div>
+              )}
+              {alertas.deficit > 0 && (
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <span className="text-sm">
+                    ⚠️ {alertas.deficit} funcionario(s) con déficit de horas (Balance HLM negativo)
                   </span>
                 </div>
               )}
@@ -401,9 +404,10 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
             <div className="flex items-center gap-2 text-sm">
               <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <span className="text-blue-900 dark:text-blue-100">
-                💡 Configuración actual: {datos.porcentajePago}% pago /{' '}
-                {100 - datos.porcentajePago}% acumulación | Jornada estándar:{' '}
-                {datos.jornadaEstandar}h
+                💡 HLM: {datos.hlm?.toFixed(1) || 'N/A'}h | 
+                Configuración: {datos.porcentajePago}% pago /{' '}
+                {100 - datos.porcentajePago}% acumulación | 
+                Jornada estándar: {datos.jornadaEstandar}h
               </span>
             </div>
           </CardContent>

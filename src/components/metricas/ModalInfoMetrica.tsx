@@ -20,6 +20,31 @@ interface ModalInfoMetricaProps {
 
 function getEjemplo(metrica: Metrica): React.ReactNode {
   const ejemplos: Record<Metrica, React.ReactNode> = {
+    SA: (
+      <>
+        Si el mes anterior acumulaste 12.5 horas:
+        <br />
+        • Esas horas se traspasan como Saldo Anterior
+        <br />
+        <strong>SA = 12.5 horas</strong>
+      </>
+    ),
+    HLM: (
+      <>
+        <strong>Ejemplo de cálculo HLM:</strong>
+        <br />
+        <br />
+        Noviembre 2024:
+        <br />
+        • Días hábiles: 20 (Lun-Vie)
+        <br />
+        • <strong>HLM = 20 × 8.8 = 176.0 horas</strong>
+        <br />
+        <br />
+        💡 El HLM varía cada mes según la cantidad de días hábiles (Lunes a Viernes) 
+        excluyendo festivos. Se calcula automáticamente.
+      </>
+    ),
     HT: (
       <>
         Si un funcionario tiene asignados:
@@ -31,6 +56,68 @@ function getEjemplo(metrica: Metrica): React.ReactNode {
         <strong>Total HT = 176 horas</strong>
       </>
     ),
+    compensacion: (
+      <>
+        <strong>Ejemplo de cálculo Compensación:</strong>
+        <br />
+        <br />
+        Funcionario recibe:
+        <br />
+        • 1 DC (Descanso Complementario 12h) = 12.0h
+        <br />
+        • 2 DN (Descanso Nocturno 4h) = 8.0h
+        <br />
+        • <strong>Compensación total = 20.0 horas</strong>
+        <br />
+        <br />
+        💡 Los descansos complementarios reducen el HLM efectivo que debe trabajar 
+        el funcionario ese mes (se restan en HMC).
+      </>
+    ),
+    HMC: (
+      <>
+        <strong>Ejemplo de cálculo HMC:</strong>
+        <br />
+        <br />
+        • HLM = 176.0 horas
+        <br />
+        • Compensación = 20.0 horas
+        <br />
+        • <strong>HMC = 176.0 - 20.0 = 156.0 horas</strong>
+        <br />
+        <br />
+        💡 El HMC representa las horas efectivas que debe trabajar después de 
+        descontar los descansos compensatorios otorgados.
+      </>
+    ),
+    balanceHLM: (
+      <>
+        <strong>Ejemplo de cálculo Balance HLM:</strong>
+        <br />
+        <br />
+        <strong>Caso A - Horas extras:</strong>
+        <br />
+        • HT = 184 horas
+        <br />
+        • HLM = 176 horas
+        <br />
+        • <strong style={{ color: 'green' }}>Balance = 184 - 176 = +8h ✅</strong>
+        <br />
+        <br />
+        <strong>Caso B - Déficit:</strong>
+        <br />
+        • HT = 160 horas
+        <br />
+        • HLM = 176 horas
+        <br />
+        • <strong style={{ color: 'red' }}>Balance = 160 - 176 = -16h ❌</strong>
+        <br />
+        <br />
+        💡 Balance positivo = horas extras trabajadas (se pagan al 150%).
+        <br />
+        Balance negativo = déficit de horas (se descuenta del sueldo o se justifica con licencias).
+      </>
+    ),
     HE: (
       <>
         Si trabajaste 195 horas en el mes:
@@ -38,15 +125,6 @@ function getEjemplo(metrica: Metrica): React.ReactNode {
         • Jornada estándar: 180h
         <br />
         <strong>HE = 195 - 180 = 15 horas extras</strong>
-      </>
-    ),
-    SA: (
-      <>
-        Si el mes anterior acumulaste 12.5 horas:
-        <br />
-        • Esas horas se traspasan como Saldo Anterior
-        <br />
-        <strong>SA = 12.5 horas</strong>
       </>
     ),
     HCP: (
@@ -58,6 +136,23 @@ function getEjemplo(metrica: Metrica): React.ReactNode {
         • % Pago: 70%
         <br />
         <strong>HCP = 10 × 0.70 = 7 horas a pagar</strong>
+      </>
+    ),
+    SHE: (
+      <>
+        <strong>Ejemplo de cálculo SHE:</strong>
+        <br />
+        <br />
+        • HE = 24.0 horas extras generadas
+        <br />
+        • HCP = 16.8 horas a pagar (70%)
+        <br />
+        • <strong>SHE = 24.0 - 16.8 = 7.2 horas acumuladas</strong>
+        <br />
+        <br />
+        💡 El SHE representa las horas extras que NO se pagan monetariamente ese mes, 
+        sino que se acumulan. Se suman al saldo anterior (SA) para formar el HAC 
+        (Horas Acumuladas) del siguiente mes.
       </>
     ),
     HAC: (
