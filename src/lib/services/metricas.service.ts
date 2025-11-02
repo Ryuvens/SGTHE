@@ -56,17 +56,21 @@ export interface MetricasFuncionario {
     rut: string;
   };
   // Métricas CORE
-  HLM: number; // Horario Legal Mensual
-  HT: number;  // Horas Trabajadas
-  HE: number;  // Horas Extras
-  SA: number;  // Saldo Anterior
-  HCP: number; // Horas Compensables (a pagar)
-  HAC: number; // Horas Acumuladas (siguiente mes)
+  SA: number;           // Saldo Anterior
+  HLM: number;          // Horario Legal Mensual
+  HT: number;           // Horas Trabajadas
+  compensacion: number; // Suma de descansos complementarios
+  HMC: number;          // Horario Mensual Corregido (HLM - Compensación)
+  balanceHLM: number;   // Balance HLM (HT - HLM)
+  HE: number;           // Horas Extras
+  HCP: number;          // Horas Compensables (a pagar)
+  SHE: number;          // Saldo Horas Extras (HE - HCP)
+  HAC: number;          // Horas Acumuladas (siguiente mes)
   // Métricas OPCIONALES
-  TD?: number;  // Turnos Diurnos
-  TN?: number;  // Turnos Nocturnos
-  DT?: number;  // Días Trabajados
-  PC?: number;  // % Cobertura
+  TD?: number;          // Turnos Diurnos
+  TN?: number;          // Turnos Nocturnos
+  DT?: number;          // Días Trabajados
+  PC?: number;          // % Cobertura
 }
 
 export interface ResumenMetricasUnidad {
@@ -80,9 +84,13 @@ export interface ResumenMetricasUnidad {
   totales: {
     HLM: number;
     HT: number;
+    compensacion: number;
+    HMC: number;
+    balanceHLM: number;
     HE: number;
     SA: number;
     HCP: number;
+    SHE: number;
     HAC: number;
   };
 }
@@ -203,7 +211,18 @@ export async function calcularMetricasUnidad(
 
   // 7. Calcular métricas por funcionario usando servicio PRO DRH 22
   const metricas: MetricasFuncionario[] = [];
-  let totales = { HLM: 0, HT: 0, HE: 0, SA: 0, HCP: 0, HAC: 0 };
+  let totales = { 
+    HLM: 0, 
+    HT: 0, 
+    compensacion: 0, 
+    HMC: 0, 
+    balanceHLM: 0, 
+    HE: 0, 
+    SA: 0, 
+    HCP: 0, 
+    SHE: 0, 
+    HAC: 0 
+  };
 
   for (const funcionario of funcionarios) {
     // Filtrar asignaciones de este funcionario
@@ -248,6 +267,12 @@ export async function calcularMetricasUnidad(
     const HCP = metricasCompletas.horasPago;
     const HAC = metricasCompletas.saldoSiguiente;
 
+    // Calcular las 4 métricas nuevas
+    const compensacion = metricasCompletas.horasDescansoComp || 0;
+    const HMC = hlm - compensacion; // Horario Mensual Corregido
+    const balanceHLM = metricasCompletas.balanceHLM; // HT - HLM
+    const SHE = HE - HCP; // Saldo Horas Extras
+
     const metricaFuncionario: MetricasFuncionario = {
       funcionarioId: funcionario.id,
       funcionario: {
@@ -256,11 +281,15 @@ export async function calcularMetricasUnidad(
         apellido: funcionario.apellido,
         rut: funcionario.rut || '',
       },
-      HLM: hlm,
-      HT: Number(HT.toFixed(2)),
-      HE: Number(HE.toFixed(2)),
       SA: Number(SA.toFixed(2)),
+      HLM: Number(hlm.toFixed(2)),
+      HT: Number(HT.toFixed(2)),
+      compensacion: Number(compensacion.toFixed(2)),
+      HMC: Number(HMC.toFixed(2)),
+      balanceHLM: Number(balanceHLM.toFixed(2)),
+      HE: Number(HE.toFixed(2)),
       HCP: Number(HCP.toFixed(2)),
+      SHE: Number(SHE.toFixed(2)),
       HAC: Number(HAC.toFixed(2)),
     };
 
@@ -279,20 +308,28 @@ export async function calcularMetricasUnidad(
 
     // Acumular totales
     totales.HLM += hlm;
-    totales.HT += HT;
-    totales.HE += HE;
-    totales.SA += SA;
-    totales.HCP += HCP;
-    totales.HAC += HAC;
+    totales.HT += metricaFuncionario.HT;
+    totales.compensacion += metricaFuncionario.compensacion;
+    totales.HMC += metricaFuncionario.HMC;
+    totales.balanceHLM += metricaFuncionario.balanceHLM;
+    totales.HE += metricaFuncionario.HE;
+    totales.SA += metricaFuncionario.SA;
+    totales.HCP += metricaFuncionario.HCP;
+    totales.SHE += metricaFuncionario.SHE;
+    totales.HAC += metricaFuncionario.HAC;
   }
 
   // Redondear totales
   totales = {
     HLM: Number(totales.HLM.toFixed(2)),
     HT: Number(totales.HT.toFixed(2)),
+    compensacion: Number(totales.compensacion.toFixed(2)),
+    HMC: Number(totales.HMC.toFixed(2)),
+    balanceHLM: Number(totales.balanceHLM.toFixed(2)),
     HE: Number(totales.HE.toFixed(2)),
     SA: Number(totales.SA.toFixed(2)),
     HCP: Number(totales.HCP.toFixed(2)),
+    SHE: Number(totales.SHE.toFixed(2)),
     HAC: Number(totales.HAC.toFixed(2)),
   };
 
