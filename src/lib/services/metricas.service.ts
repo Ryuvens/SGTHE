@@ -1,5 +1,51 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { calculadorPRODRH22 } from '@/services/prodrh22/calculoMetricas';
+
+/**
+ * Calcula cantidad de turnos diurnos del mes
+ */
+function calcularTurnosDiurnos(
+  asignaciones: Array<{ esNocturno?: boolean; tipoTurno?: { esNocturno?: boolean } | null }>
+): number {
+  return asignaciones.filter(
+    a => !a.esNocturno && !a.tipoTurno?.esNocturno
+  ).length;
+}
+
+/**
+ * Calcula cantidad de turnos nocturnos del mes
+ */
+function calcularTurnosNocturnos(
+  asignaciones: Array<{ esNocturno?: boolean; tipoTurno?: { esNocturno?: boolean } | null }>
+): number {
+  return asignaciones.filter(
+    a => a.esNocturno || a.tipoTurno?.esNocturno
+  ).length;
+}
+
+/**
+ * Calcula días únicos trabajados en el mes
+ */
+function calcularDiasTrabajados(
+  asignaciones: Array<{ fecha: Date }>
+): number {
+  const diasUnicos = new Set(
+    asignaciones.map(a => a.fecha.toISOString().split('T')[0])
+  );
+  return diasUnicos.size;
+}
+
+/**
+ * Calcula porcentaje de cobertura del mes
+ */
+function calcularPorcentajeCobertura(
+  diasTrabajados: number,
+  diasMes: number
+): number {
+  if (diasMes === 0) return 0;
+  return Math.round((diasTrabajados / diasMes) * 100);
+}
 
 export interface MetricasFuncionario {
   funcionarioId: string;
@@ -10,6 +56,7 @@ export interface MetricasFuncionario {
     rut: string;
   };
   // Métricas CORE
+  HLM: number; // Horario Legal Mensual
   HT: number;  // Horas Trabajadas
   HE: number;  // Horas Extras
   SA: number;  // Saldo Anterior
@@ -28,8 +75,10 @@ export interface ResumenMetricasUnidad {
   anio: number;
   jornadaEstandar: number;
   porcentajePago: number;
+  hlm: number; // Horario Legal Mensual calculado
   metricas: MetricasFuncionario[];
   totales: {
+    HLM: number;
     HT: number;
     HE: number;
     SA: number;
@@ -66,6 +115,11 @@ export async function calcularMetricasUnidad(
 
   const jornadaEstandar = configuracion.jornadaMensualEstandar;
   const porcentajePago = Number(configuracion.porcentajePagoHE);
+  const porcentajeAcumulacion = 100 - porcentajePago;
+
+  // NUEVO: Calcular HLM usando servicio PRO DRH 22
+  const diasHabiles = calculadorPRODRH22.calcularDiasHabiles(anio, mes);
+  const hlm = calculadorPRODRH22.calcularHLM(diasHabiles);
 
   // 2. Obtener todos los funcionarios de la unidad
   const funcionarios = await prisma.usuario.findMany({
@@ -144,9 +198,12 @@ export async function calcularMetricasUnidad(
     saldosAnteriores.map(s => [s.funcionarioId, Number(s.horasAcumuladas)])
   );
 
-  // 6. Calcular métricas por funcionario
+  // 6. Calcular días del mes para métricas opcionales
+  const diasMes = ultimoDia.getDate();
+
+  // 7. Calcular métricas por funcionario usando servicio PRO DRH 22
   const metricas: MetricasFuncionario[] = [];
-  let totales = { HT: 0, HE: 0, SA: 0, HCP: 0, HAC: 0 };
+  let totales = { HLM: 0, HT: 0, HE: 0, SA: 0, HCP: 0, HAC: 0 };
 
   for (const funcionario of funcionarios) {
     // Filtrar asignaciones de este funcionario
@@ -154,17 +211,16 @@ export async function calcularMetricasUnidad(
       a => a.usuarioId === funcionario.id
     );
 
-    // Calcular HT (Horas Trabajadas)
-    // Usar duracion de asignacion si existe, sino duracionHoras del tipoTurno
-    const HT = asignacionesFuncionario.reduce((total, asignacion) => {
-      const duracion = asignacion.duracion 
-        || asignacion.tipoTurno?.duracionHoras 
-        || 0;
-      return total + duracion;
-    }, 0);
+    // NUEVO: Calcular HT usando servicio PRO DRH 22 (con truncado Math.floor)
+    const HT = calculadorPRODRH22.calcularHTDesdeAsignaciones(asignacionesFuncionario);
 
-    // Calcular HE (Horas Extras)
-    const HE = Math.max(0, HT - jornadaEstandar);
+    // NUEVO: Clasificar HE por tipo usando servicio PRO DRH 22
+    const { HE_total, HE_diurnas, HE_nocturnas, HE_festivas } = 
+      calculadorPRODRH22.clasificarHEPorTipo(
+        asignacionesFuncionario,
+        HT,
+        hlm
+      );
 
     // Obtener SA (Saldo Anterior)
     // Prioridad: 1. Ajuste manual del mes actual, 2. HAC del mes anterior
@@ -173,11 +229,24 @@ export async function calcularMetricasUnidad(
       ? ajusteManual 
       : (saldosMap.get(funcionario.id) || 0);
 
-    // Calcular HCP (Horas Compensables - a pagar)
-    const HCP = (HE * porcentajePago) / 100;
+    // NUEVO: Calcular métricas completas usando servicio PRO DRH 22
+    const metricasCompletas = calculadorPRODRH22.calcularMetricasCompletas({
+      funcionarioId: funcionario.id,
+      mes,
+      anio,
+      HT,
+      HE_diurnas,
+      HE_nocturnas,
+      HE_festivas,
+      saldoAnterior: SA,
+      porcentajePago,
+      porcentajeAcumulacion
+    });
 
-    // Calcular HAC (Horas Acumuladas - siguiente mes)
-    const HAC = HE - HCP + SA;
+    // Extraer valores para compatibilidad
+    const HE = metricasCompletas.HE_total;
+    const HCP = metricasCompletas.horasPago;
+    const HAC = metricasCompletas.saldoSiguiente;
 
     const metricaFuncionario: MetricasFuncionario = {
       funcionarioId: funcionario.id,
@@ -187,6 +256,7 @@ export async function calcularMetricasUnidad(
         apellido: funcionario.apellido,
         rut: funcionario.rut || '',
       },
+      HLM: hlm,
       HT: Number(HT.toFixed(2)),
       HE: Number(HE.toFixed(2)),
       SA: Number(SA.toFixed(2)),
@@ -196,32 +266,19 @@ export async function calcularMetricasUnidad(
 
     // Calcular métricas opcionales si se solicitan
     if (incluirOpcionales) {
-      // TD (Turnos Diurnos) - basado en esNocturno o codigo del tipoTurno
-      metricaFuncionario.TD = asignacionesFuncionario.filter(
-        a => !a.esNocturno && !a.tipoTurno?.esNocturno && 
-             (a.tipoTurno?.codigo === 'D' || !a.tipoTurno?.codigo.includes('N'))
-      ).length;
-
-      // TN (Turnos Nocturnos)
-      metricaFuncionario.TN = asignacionesFuncionario.filter(
-        a => a.esNocturno || a.tipoTurno?.esNocturno || 
-             a.tipoTurno?.codigo === 'N'
-      ).length;
-
-      // DT (Días Trabajados)
-      const diasUnicos = new Set(
-        asignacionesFuncionario.map(a => a.fecha.toISOString().split('T')[0])
+      metricaFuncionario.TD = calcularTurnosDiurnos(asignacionesFuncionario);
+      metricaFuncionario.TN = calcularTurnosNocturnos(asignacionesFuncionario);
+      metricaFuncionario.DT = calcularDiasTrabajados(asignacionesFuncionario);
+      metricaFuncionario.PC = calcularPorcentajeCobertura(
+        metricaFuncionario.DT,
+        diasMes
       );
-      metricaFuncionario.DT = diasUnicos.size;
-
-      // PC (% Cobertura)
-      const diasMes = ultimoDia.getDate();
-      metricaFuncionario.PC = Number(((metricaFuncionario.DT / diasMes) * 100).toFixed(2));
     }
 
     metricas.push(metricaFuncionario);
 
     // Acumular totales
+    totales.HLM += hlm;
     totales.HT += HT;
     totales.HE += HE;
     totales.SA += SA;
@@ -231,6 +288,7 @@ export async function calcularMetricasUnidad(
 
   // Redondear totales
   totales = {
+    HLM: Number(totales.HLM.toFixed(2)),
     HT: Number(totales.HT.toFixed(2)),
     HE: Number(totales.HE.toFixed(2)),
     SA: Number(totales.SA.toFixed(2)),
@@ -244,6 +302,7 @@ export async function calcularMetricasUnidad(
     anio,
     jornadaEstandar,
     porcentajePago,
+    hlm,
     metricas,
     totales,
   };
