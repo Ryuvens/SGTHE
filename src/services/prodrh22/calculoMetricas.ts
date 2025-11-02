@@ -112,7 +112,7 @@ export class CalculadorMetricasPRODRH22 {
    * // Suma: 21.8 → Truncado: 21h
    */
   calcularHTDesdeAsignaciones(
-    asignaciones: Array<{ duracion?: number | null; tipoTurno?: { duracionHoras?: number } | null }>
+    asignaciones: Array<{ duracion?: number | null; tipoTurno?: { duracionHoras?: number | null } | null }>
   ): number {
     const suma = asignaciones.reduce((total, asignacion) => {
       const duracion = asignacion.duracion || asignacion.tipoTurno?.duracionHoras || 0;
@@ -140,7 +140,7 @@ export class CalculadorMetricasPRODRH22 {
   clasificarHEPorTipo(
     asignaciones: Array<{ 
       duracion?: number | null; 
-      tipoTurno?: { duracionHoras?: number } | null;
+      tipoTurno?: { duracionHoras?: number | null } | null;
       esNocturno?: boolean;
       esDiaInhabil?: boolean;
       esFestivo?: boolean;
