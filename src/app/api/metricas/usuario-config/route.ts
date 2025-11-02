@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { METRICAS_CORE, CONFIGURACION_DEFAULT } from '@/lib/constants/metricas';
 
 const configuracionMetricasSchema = z.object({
-  metricasVisibles: z.array(z.string()).min(5, 'Debe incluir al menos las 5 métricas CORE'),
-  ordenMetricas: z.array(z.number()).min(5, 'Debe incluir orden para las métricas CORE'),
+  metricasVisibles: z.array(z.string()).min(10, 'Debe incluir al menos las 10 métricas CORE'),
+  ordenMetricas: z.array(z.number()).min(10, 'Debe incluir orden para las métricas CORE'),
 });
 
 // GET - Obtener configuración del usuario actual
@@ -30,8 +31,8 @@ export async function GET(request: NextRequest) {
     if (!configuracion) {
       const configDefault = {
         userId,
-        metricasVisibles: ['HT', 'HE', 'SA', 'HCP', 'HAC'], // Solo CORE por defecto
-        ordenMetricas: [0, 1, 2, 3, 4], // Orden natural
+        metricasVisibles: CONFIGURACION_DEFAULT.metricasVisibles,
+        ordenMetricas: CONFIGURACION_DEFAULT.ordenMetricas,
         esDefault: true,
       };
       
@@ -79,7 +80,7 @@ export async function PUT(request: NextRequest) {
     const { metricasVisibles, ordenMetricas } = validacion.data;
 
     // Validar que incluya las métricas CORE obligatorias
-    const metricasCORE = ['HT', 'HE', 'SA', 'HCP', 'HAC'];
+    const metricasCORE = [...METRICAS_CORE];
     const faltanCORE = metricasCORE.filter(m => !metricasVisibles.includes(m));
 
     if (faltanCORE.length > 0) {
@@ -166,8 +167,8 @@ export async function DELETE(request: NextRequest) {
     // Retornar configuración por defecto
     return NextResponse.json({
       userId,
-      metricasVisibles: ['HT', 'HE', 'SA', 'HCP', 'HAC'],
-      ordenMetricas: [0, 1, 2, 3, 4],
+      metricasVisibles: CONFIGURACION_DEFAULT.metricasVisibles,
+      ordenMetricas: CONFIGURACION_DEFAULT.ordenMetricas,
       esDefault: true,
       message: 'Configuración restablecida a valores por defecto',
     });
