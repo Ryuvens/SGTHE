@@ -53,7 +53,8 @@ export interface MetricasFuncionario {
     id: string;
     nombre: string;
     apellido: string;
-    rut: string;
+    rut: string | null;
+    iniciales: string;
   };
   // Métricas CORE
   SA: number;           // Saldo Anterior
@@ -140,6 +141,11 @@ export async function calcularMetricasUnidad(
       nombre: true,
       apellido: true,
       rut: true,
+      abreviatura: {
+        select: {
+          codigo: true,
+        },
+      },
     },
   });
 
@@ -279,7 +285,8 @@ export async function calcularMetricasUnidad(
         id: funcionario.id,
         nombre: funcionario.nombre,
         apellido: funcionario.apellido,
-        rut: funcionario.rut || '',
+        rut: funcionario.rut,
+        iniciales: funcionario.abreviatura?.codigo || '',
       },
       SA: Number(SA.toFixed(2)),
       HLM: Number(hlm.toFixed(2)),

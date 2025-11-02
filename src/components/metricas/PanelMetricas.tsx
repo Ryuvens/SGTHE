@@ -34,6 +34,7 @@ interface MetricasFuncionario {
     nombre: string;
     apellido: string;
     rut: string | null;
+    iniciales: string;
   };
   SA: number;           // Saldo Anterior
   HLM: number;          // Horario Legal Mensual
@@ -445,7 +446,9 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nombre</TableHead>
+                    <TableHead className="sticky left-0 z-20 bg-background">RUT</TableHead>
+                    <TableHead className="sticky left-[100px] z-20 bg-background">Inic.</TableHead>
+                    <TableHead className="sticky left-[150px] z-20 bg-background">Funcionario</TableHead>
                     {renderHeaders()}
                     <TableHead>Alertas</TableHead>
                   </TableRow>
@@ -455,7 +458,13 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
                     const alerta = obtenerAlerta(metrica);
                     return (
                       <TableRow key={metrica.funcionarioId}>
-                        <TableCell className="font-medium">
+                        <TableCell className="sticky left-0 z-10 bg-background text-xs">
+                          {metrica.funcionario.rut || 'Sin RUT'}
+                        </TableCell>
+                        <TableCell className="sticky left-[100px] z-10 bg-background text-center font-bold">
+                          {metrica.funcionario.iniciales || '--'}
+                        </TableCell>
+                        <TableCell className="sticky left-[150px] z-10 bg-background font-medium">
                           {metrica.funcionario.nombre} {metrica.funcionario.apellido}
                         </TableCell>
                         {renderMetricasCells(metrica)}
