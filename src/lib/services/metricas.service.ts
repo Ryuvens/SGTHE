@@ -319,6 +319,40 @@ export async function calcularMetricasUnidad(
     totales.HAC += metricaFuncionario.HAC;
   }
 
+  // 8. Guardar métricas calculadas en BD para trazabilidad histórica
+  // Esto permite que HAC de un mes se convierta en SA del siguiente mes
+  await prisma.$transaction(
+    metricas.map((metrica) =>
+      prisma.saldoHorasFuncionario.upsert({
+        where: {
+          funcionarioId_mes_anio: {
+            funcionarioId: metrica.funcionarioId,
+            mes,
+            anio,
+          },
+        },
+        update: {
+          horasTrabajadas: metrica.HT,
+          horasExtras: metrica.HE,
+          horasCompensables: metrica.HCP,
+          horasAcumuladas: metrica.HAC,
+          // NO sobrescribir saldoAnterior si hay ajuste manual (motivo presente)
+          ...(ajustesMap.has(metrica.funcionarioId) ? {} : { saldoAnterior: metrica.SA }),
+        },
+        create: {
+          funcionarioId: metrica.funcionarioId,
+          mes,
+          anio,
+          saldoAnterior: metrica.SA,
+          horasTrabajadas: metrica.HT,
+          horasExtras: metrica.HE,
+          horasCompensables: metrica.HCP,
+          horasAcumuladas: metrica.HAC,
+        },
+      })
+    )
+  );
+
   // Redondear totales
   totales = {
     HLM: Number(totales.HLM.toFixed(2)),
