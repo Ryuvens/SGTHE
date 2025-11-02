@@ -340,13 +340,19 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {['SA', 'HLM', 'HT', 'compensacion', 'HMC', 'balanceHLM', 'HE', 'HCP', 'SHE', 'HAC'].map((metricaCodigo) => {
-                const metricaKey = metricaCodigo as keyof typeof datos.totales;
-                const valor = datos.totales[metricaKey];
+                // HLM es especial: mostrar valor único del mes, no suma
+                // HMC es especial: mostrar promedio, no suma
+                const valor = metricaCodigo === 'HLM' 
+                  ? datos.hlm  // Valor único del mes
+                  : metricaCodigo === 'HMC'
+                  ? (datos.metricas.length > 0 ? datos.totales.HMC / datos.metricas.length : 0)  // Promedio
+                  : datos.totales[metricaCodigo as keyof typeof datos.totales];  // Suma normal
                 
                 return (
                   <div key={metricaCodigo} className="text-center">
                     <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
                       {metricaCodigo}
+                      {metricaCodigo === 'HMC' && <span className="text-xs">⌀</span>}
                       <Info 
                         className="h-3 w-3 cursor-pointer hover:text-primary transition-colors" 
                         onClick={() => abrirInfoMetrica(metricaCodigo as Metrica)}

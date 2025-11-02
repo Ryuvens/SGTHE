@@ -283,7 +283,7 @@ export async function calcularMetricasUnidad(
       },
       SA: Number(SA.toFixed(2)),
       HLM: Number(hlm.toFixed(2)),
-      HT: Number(HT.toFixed(2)),
+      HT: HT,  // Entero puro - ya viene de Math.floor()
       compensacion: Number(compensacion.toFixed(2)),
       HMC: Number(HMC.toFixed(2)),
       balanceHLM: Number(balanceHLM.toFixed(2)),

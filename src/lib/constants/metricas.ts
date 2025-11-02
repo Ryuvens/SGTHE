@@ -40,8 +40,8 @@ export const DESCRIPCION_METRICAS: Record<string, { nombre: string; descripcion:
   },
   HMC: {
     nombre: 'Horario Mensual Corregido',
-    descripcion: 'Horario legal ajustado por descansos complementarios otorgados',
-    calculo: 'HLM - Compensación',
+    descripcion: 'Horario legal ajustado por descansos complementarios otorgados. En resumen global se muestra el promedio de la unidad',
+    calculo: 'HLM - Compensación (⌀ promedio en resumen)',
   },
   balanceHLM: {
     nombre: 'Balance HLM',
