@@ -973,7 +973,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
     
     // Calcular ancho real de celda desde el DOM usando getBoundingClientRect
-    const firstDayCell = tableContainer.querySelector('[data-day]') as HTMLElement
+    // Usar día 2 (ancho estándar) en lugar de día 1 (que tiene margin extra)
+    const firstDayCell = tableContainer.querySelector('[data-day="2"]') as HTMLElement
     let cellWidth = 45
     
     if (firstDayCell) {
@@ -981,11 +982,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       cellWidth = rect.width
     }
     
-    const scrollTo = (startDay - 1) * cellWidth
+    // Considerar el margin extra de 145px del día 1
+    const offsetDia1 = startDay > 1 ? 145 : 0
+    const scrollTo = (startDay - 1) * cellWidth + offsetDia1
     
     console.log('🎯 Navegando a día:', { 
       startDay, 
-      cellWidth, 
+      cellWidth,
+      offsetDia1,
       scrollTo,
       currentScroll: tableContainer.scrollLeft
     })
@@ -1545,7 +1549,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         <table className="w-full border-collapse text-sm">
                           <thead>
                             <tr className="sticky top-0 z-20 bg-background border-b shadow-sm">
-                              <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 min-w-[140px] border-r border-border shadow-sm">
+                              <th className="text-left p-2 font-medium sticky left-0 bg-background z-30 w-[140px] border-r border-border shadow-sm">
                                 Funcionario
                               </th>
                           {dias.map((dia, index) => {
@@ -1559,7 +1563,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 className={cn(
                                   "p-1 text-center text-xs min-w-[45px] bg-background",
                                   esFinDeSemana && "bg-muted/50",
-                                  esPrimerDia && "pl-[145px]"
+                                  esPrimerDia && "ml-[145px]"
                                 )}
                               >
                                 <div className="font-normal capitalize">{format(dia, 'EEE', { locale: es })}</div>
@@ -1572,7 +1576,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       <tbody>
                         {usuarios.map(usuario => (
                           <tr key={usuario.id} className="border-b hover:bg-accent/30 transition-colors">
-                            <td className="p-2 font-medium sticky left-0 bg-background z-10 border-r border-border shadow-sm">
+                            <td className="p-2 font-medium sticky left-0 bg-background z-10 w-[140px] border-r border-border shadow-sm">
                               <div>
                                 <div className="text-sm">{usuario.nombre} {usuario.apellido}</div>
                                 {usuario.abreviatura?.codigo && (
@@ -1598,7 +1602,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                   key={dia.toISOString()} 
                                   className={cn(
                                     "p-0",
-                                    esPrimerDia && "pl-[145px]"
+                                    esPrimerDia && "ml-[145px]"
                                   )}
                                   onPointerDown={(e) => {
                                     // Guardar posición inicial del click
