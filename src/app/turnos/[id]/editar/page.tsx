@@ -842,12 +842,22 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     const HT = calculadorPRODRH22.calcularHTDesdeAsignaciones(asignacionesFormateadas)
     
     // 6. Calcular compensación (descansos complementarios)
+    // Valores según PRO DRH 22 - Horas de devolución por código
     let compensacion = 0
+    const horasCompensacion: Record<string, number> = {
+      'DA': 9,    // Descanso Comp. Lunes-Jueves (turno día)
+      'DV': 8,    // Descanso Comp. Viernes (turno día)
+      'DC': 12,   // Descanso Comp. 12 horas (turno completo)
+      'DN': 4,    // Descanso Comp. 4 horas (turno noche)
+      'DS': 8.5   // Descanso Comp. 8.5 horas (saliente noche)
+    }
+
     turnosUsuario.forEach(turno => {
       const codigo = turno.tipoTurno?.codigo || ''
-      // Códigos de descanso complementario
-      if (['DA', 'DV', 'DC', 'DN', 'DS'].includes(codigo)) {
-        compensacion += turno.tipoTurno?.duracionHoras || 0
+      
+      // Si el código está en el mapa de compensaciones, sumar horas
+      if (codigo in horasCompensacion) {
+        compensacion += horasCompensacion[codigo]
       }
     })
     compensacion = Math.floor(compensacion)
@@ -1541,13 +1551,15 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           {dias.map((dia, index) => {
                             const diaSemana = getDay(dia)
                             const esFinDeSemana = diaSemana === 0 || diaSemana === 6
+                            const esPrimerDia = index === 0
                             return (
                               <th 
                                 key={dia.toISOString()}
                                 data-day={index + 1}
                                 className={cn(
                                   "p-1 text-center text-xs min-w-[45px] bg-background",
-                                  esFinDeSemana && "bg-muted/50"
+                                  esFinDeSemana && "bg-muted/50",
+                                  esPrimerDia && "pl-[145px]"
                                 )}
                               >
                                 <div className="font-normal capitalize">{format(dia, 'EEE', { locale: es })}</div>
@@ -1570,12 +1582,13 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 )}
                               </div>
                             </td>
-                            {dias.map(dia => {
+                            {dias.map((dia, index) => {
                               // Extraer fecha sin conversión de zona horaria
                               const fecha = dia.toISOString().split('T')[0]
                               const key = `${fecha}-${usuario.id}`
                               const asignacion = asignaciones.get(key)
                               const esFinDeSemana = getDay(dia) === 0 || getDay(dia) === 6
+                              const esPrimerDia = index === 0
                               
                               const isSelected = selectedCells.includes(key)
                               const canPaste = copiedSequence.length > 0 && !asignacion
@@ -1583,7 +1596,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               return (
                                 <td 
                                   key={dia.toISOString()} 
-                                  className="p-0"
+                                  className={cn(
+                                    "p-0",
+                                    esPrimerDia && "pl-[145px]"
+                                  )}
                                   onPointerDown={(e) => {
                                     // Guardar posición inicial del click
                                     const startX = e.clientX
@@ -1810,6 +1826,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
       {/* Modal de vista previa */}
       <RolPreview
+        key={`preview-${asignaciones.size}`}
         open={showPreview}
         onClose={() => setShowPreview(false)}
         publicacion={publicacion}

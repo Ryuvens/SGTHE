@@ -38,9 +38,10 @@ export default function RolPreview({
   })
 
   const mesNombre = format(mes, 'MMMM yyyy', { locale: es })
+  // Generar días con hora de mediodía para evitar problemas de zona horaria
   const diasDelMes = Array.from(
     { length: new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate() },
-    (_, i) => new Date(mes.getFullYear(), mes.getMonth(), i + 1)
+    (_, i) => new Date(mes.getFullYear(), mes.getMonth(), i + 1, 12, 0, 0)
   )
 
   return (
@@ -218,12 +219,12 @@ export default function RolPreview({
                         const matchFuncionario = t.funcionarioId === func.id || 
                                                 t.funcionario?.id === func.id
                         
-                        // Comparar fecha
-                        const fechaTurno = new Date(t.fecha)
-                        const matchFecha = 
-                          fechaTurno.getDate() === dia.getDate() &&
-                          fechaTurno.getMonth() === dia.getMonth() &&
-                          fechaTurno.getFullYear() === dia.getFullYear()
+                        // Comparar fechas como strings ISO para evitar problemas de zona horaria
+                        const fechaTurnoStr = t.fecha instanceof Date 
+                          ? t.fecha.toISOString().split('T')[0]
+                          : (typeof t.fecha === 'string' ? t.fecha.split('T')[0] : t.fecha)
+                        const fechaDiaStr = dia.toISOString().split('T')[0]
+                        const matchFecha = fechaTurnoStr === fechaDiaStr
                         
                         return matchFuncionario && matchFecha
                       })
