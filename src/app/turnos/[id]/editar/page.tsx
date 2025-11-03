@@ -56,6 +56,9 @@ interface Asignacion {
     codigo: string
     nombre?: string
     color?: string
+    duracionHoras?: number
+    esNocturno?: boolean
+    esDiaInhabil?: boolean
   }
 }
 
@@ -248,7 +251,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
             id: asig.tipoTurno?.id,
             codigo: asig.tipoTurno?.codigo || '',
             nombre: asig.tipoTurno?.nombre,
-            color: asig.tipoTurno?.color
+            color: asig.tipoTurno?.color,
+            duracionHoras: asig.tipoTurno?.duracionHoras,
+            esNocturno: asig.tipoTurno?.esNocturno,
+            esDiaInhabil: asig.tipoTurno?.esDiaInhabil
           }
         })
       })
@@ -411,7 +417,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                   id: result.data!.tipoTurno?.id,
                   codigo: result.data!.tipoTurno?.codigo || activeData.codigo,
                   nombre: result.data!.tipoTurno?.nombre || activeData.nombre,
-                  color: result.data!.tipoTurno?.color || activeData.color
+                  color: result.data!.tipoTurno?.color || activeData.color,
+                  duracionHoras: result.data!.tipoTurno?.duracionHoras ?? undefined,
+                  esNocturno: result.data!.tipoTurno?.esNocturno,
+                  esDiaInhabil: result.data!.tipoTurno?.esDiaInhabil
                 }
               })
               return newMap
@@ -551,7 +560,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                 id: createResult.data!.tipoTurno?.id,
                 codigo: createResult.data!.tipoTurno?.codigo || codigo,
                 nombre: createResult.data!.tipoTurno?.nombre || nombre,
-                color: createResult.data!.tipoTurno?.color || color
+                color: createResult.data!.tipoTurno?.color || color,
+                duracionHoras: createResult.data!.tipoTurno?.duracionHoras ?? undefined,
+                esNocturno: createResult.data!.tipoTurno?.esNocturno,
+                esDiaInhabil: createResult.data!.tipoTurno?.esDiaInhabil
               }
             })
             return newMap
@@ -791,70 +803,123 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
   }
 
-  // Calcular métricas de HLM por usuario usando servicio PRO DRH 22
+  // Calcular métricas completas usando servicio PRO DRH 22
   function calcularMetricasUsuario(usuarioId: string) {
+    // 1. Obtener usuario con RUT e Iniciales
+    const usuario = usuarios.find(u => u.id === usuarioId)
+    if (!usuario) {
+      return null // Safety check
+    }
+    
+    const rut = usuario.rut || 'Sin RUT'
+    const iniciales = usuario.abreviatura?.codigo || '--'
+    const nombreCompleto = `${usuario.nombre} ${usuario.apellido}`
+    
+    // 2. Filtrar asignaciones del usuario
     const todasLasAsignaciones = Array.from(asignaciones.values())
     const turnosUsuario = todasLasAsignaciones.filter(a => a.usuarioId === usuarioId)
     
-    // Calcular días hábiles y HLM usando el servicio oficial
+    // 3. Calcular días hábiles y HLM usando servicio PRO DRH 22
     const diasHabiles = calculadorPRODRH22.calcularDiasHabiles(publicacion.año, publicacion.mes)
     const HLM = calculadorPRODRH22.calcularHLM(diasHabiles)
     
-    // Horas por tipo de turno según documento oficial
-    const HORAS_TURNO: Record<string, number> = {
-      'A': 9, 'AV': 8, 'OP': 12, 'OE': 12, 'B': 9,
-      'CIC': 12, 'C': 9, 'CV': 8, 'D': 12, 'D11S': 9.5,
-      'E': 9, 'EV': 8, 'IA': 9, 'IAV': 8, 'ID': 12,
-      'IN': 3.5, 'IS': 8.5, 'N': 3.5, 'S': 8.5,
-      'O': 9, 'OV': 8, 'PA': 9, 'PAV': 8, 'R': 4,
-      'L': 0, 'FLA': 0, 'DA': 0, 'DV': 0, 'DC': 0, 'DN': 0, 'DS': 0
-    }
+    // 4. Formatear asignaciones para el servicio (usar duracionHoras del tipoTurno)
+    const asignacionesFormateadas = turnosUsuario.map(turno => ({
+      duracion: turno.tipoTurno?.duracionHoras || 0,
+      tipoTurno: {
+        duracionHoras: turno.tipoTurno?.duracionHoras || 0
+      },
+      esNocturno: turno.tipoTurno?.esNocturno || false,
+      esDiaInhabil: false,
+      esFestivo: false
+    }))
     
-    // Horas devueltas por descansos complementarios
-    const DEVOLUCION_HORAS: Record<string, number> = {
-      'DA': 9, 'DV': 8, 'DC': 12, 'DN': 3.5, 'DS': 8.5
-    }
+    // 5. Calcular HT usando servicio PRO DRH 22 (con Math.floor interno)
+    const HT = calculadorPRODRH22.calcularHTDesdeAsignaciones(asignacionesFormateadas)
     
-    let horasTrabajadas = 0
-    let horasDevueltas = 0
+    // 6. Calcular compensación (descansos complementarios)
+    let compensacion = 0
+    turnosUsuario.forEach(turno => {
+      const codigo = turno.tipoTurno?.codigo || ''
+      // Códigos de descanso complementario
+      if (['DA', 'DV', 'DC', 'DN', 'DS'].includes(codigo)) {
+        compensacion += turno.tipoTurno?.duracionHoras || 0
+      }
+    })
+    compensacion = Math.floor(compensacion)
+    
+    // 7. Calcular HMC (Horario Mensual Corregido)
+    const HMC = HLM - compensacion
+    
+    // 8. Calcular Balance HLM
+    const balanceHLM = calculadorPRODRH22.calcularBalanceHLM(HT, HLM)
+    
+    // 9. Calcular HE (Horas Extras)
+    const HE = Math.max(0, balanceHLM)
+    
+    // 10. Calcular HCP (Horas Compensables a pagar - 70%)
+    const porcentajePago = 70
+    const HCP = (HE * porcentajePago) / 100
+    
+    // 11. Calcular SHE (Saldo Horas Extras = HE - HCP)
+    const SHE = HE - HCP
+    
+    // 12. Calcular HAC (Horas Acumuladas = SA + SHE)
+    const SA = 0 // TODO: Obtener SA real del mes anterior
+    const HAC = SA + SHE
+    
+    // 13. Calcular horas semanales (específico de este panel /editar)
     const horasSemanales = [0, 0, 0, 0, 0] // 5 semanas máximo
     
     turnosUsuario.forEach(turno => {
       const codigo = turno.tipoTurno?.codigo || ''
-      const horas = HORAS_TURNO[codigo] || 0
-      const devolucion = DEVOLUCION_HORAS[codigo] || 0
+      const horas = turno.tipoTurno?.duracionHoras || 0
+      const esCompensacion = ['DA', 'DV', 'DC', 'DN', 'DS'].includes(codigo)
       
-      horasTrabajadas += horas
-      horasDevueltas += devolucion
-      
-      // Calcular semana del mes
-      const dia = new Date(turno.fecha).getDate()
-      const semana = Math.floor((dia - 1) / 7)
-      if (semana < 5) {
-        horasSemanales[semana] += horas
+      // Solo contar horas trabajadas (no compensaciones)
+      if (!esCompensacion) {
+        const dia = new Date(turno.fecha).getDate()
+        const semana = Math.floor((dia - 1) / 7)
+        if (semana < 5) {
+          horasSemanales[semana] += horas
+        }
       }
     })
     
-    // PRO DRH 22: Sub-total mensual debe truncarse a enteros (no redondear)
-    horasTrabajadas = Math.floor(horasTrabajadas)
-    horasDevueltas = Math.floor(horasDevueltas)
+    // 14. Calcular estado (sobrecarga/alerta/ok)
+    const estado = balanceHLM > 40 ? 'sobrecarga' : balanceHLM < -10 ? 'alerta' : 'ok'
     
-    // Calcular balance usando el servicio oficial PRO DRH 22
-    // Balance = HT - HLM (positivo = horas extras, negativo = horas faltantes)
-    const HT_ajustado = horasTrabajadas - horasDevueltas
-    const balanceHLM = Math.round((HT_ajustado - HLM) * 10) / 10 // Redondear a 1 decimal
-    const horasExtras = Math.round(Math.max(0, balanceHLM) * 10) / 10 // Si balance es positivo, son HE
-    
+    // 15. Retornar objeto con TODAS las métricas CORE + datos adicionales
     return {
+      // Columnas 1-3: Identificación
+      rut,
+      iniciales,
+      nombreCompleto,
+      
+      // Columnas 4-13: Métricas CORE PRO DRH 22 (10 métricas)
+      SA,
       HLM,
-      diasHabiles,
-      horasTrabajadas,
-      horasDevueltas,
+      HT,
+      compensacion,
+      HMC,
       balanceHLM,
-      horasExtras,
-      alertas: [],
+      HE,
+      HCP,
+      SHE,
+      HAC,
+      
+      // Columnas 14-17: Datos adicionales (específicos de /editar)
       horasSemanales,
-      estado: balanceHLM > 40 ? 'sobrecarga' : balanceHLM < -10 ? 'alerta' : 'ok'
+      diasHabiles,
+      
+      // Columna 18: Alertas y estado
+      alertas: [],
+      estado,
+      
+      // Legado (para compatibilidad)
+      horasTrabajadas: HT,
+      horasDevueltas: compensacion,
+      horasExtras: HE
     }
   }
 
@@ -1042,92 +1107,172 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="relative overflow-auto max-h-[600px] border rounded-md">
+                <table className="w-full text-sm min-w-[1400px]">
                   <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-2">Funcionario</th>
-                      <th className="text-center p-2">H. Trabajadas</th>
-                      <th className="text-center p-2">H. Devueltas</th>
-                      <th className="text-center p-2">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger className="inline-flex items-center gap-1">
-                              Balance HLM
-                              <Info className="h-3 w-3" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="font-semibold">Balance = HT - HLM</p>
-                              <p className="text-xs mt-1">
-                                • Positivo (+): Horas extraordinarias a compensar<br/>
-                                • Negativo (-): Horas faltantes (posible descuento)<br/>
-                                • Cero (0): Jornada cumplida exacta
-                              </p>
-                              <p className="text-xs mt-1 text-muted-foreground">
-                                Según PRO DRH 22 Cap. 3
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                    <tr>
+                      {/* COLUMNAS 1-3: STICKY HORIZONTAL + VERTICAL */}
+                      <th className="sticky left-0 top-0 bg-white dark:bg-slate-950 border-r border-border z-30 p-2 text-left text-xs font-medium">
+                        RUT
                       </th>
-                      <th className="text-center p-2">H. Extras</th>
-                      <th className="text-center p-2">Sem 1</th>
-                      <th className="text-center p-2">Sem 2</th>
-                      <th className="text-center p-2">Sem 3</th>
-                      <th className="text-center p-2">Sem 4</th>
-                      <th className="text-center p-2">Validaciones</th>
+                      <th className="sticky left-[110px] top-0 bg-white dark:bg-slate-950 border-r border-border z-30 p-2 text-center text-xs font-medium">
+                        Inic.
+                      </th>
+                      <th className="sticky left-[170px] top-0 bg-white dark:bg-slate-950 border-r border-border z-30 p-2 text-left text-xs font-medium">
+                        Funcionario
+                      </th>
+
+                      {/* COLUMNAS 4-13: MÉTRICAS CORE - STICKY SOLO VERTICAL */}
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        SA
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        HLM
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        HT
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        Comp.
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        HMC
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        <div className="flex items-center justify-center gap-1">
+                          Balance HLM
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Balance = HT - HLM</p>
+                                <p className="text-xs">Positivo: horas extras</p>
+                                <p className="text-xs">Negativo: horas faltantes</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        HE
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        HCP
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        SHE
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        HAC
+                      </th>
+
+                      {/* COLUMNAS 14-17: SEMANALES - STICKY SOLO VERTICAL */}
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        Sem 1
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        Sem 2
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        Sem 3
+                      </th>
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        Sem 4
+                      </th>
+
+                      {/* COLUMNA 18: ALERTAS - STICKY SOLO VERTICAL */}
+                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
+                        Validaciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {usuarios.map(usuario => {
                       const m = calcularMetricasUsuario(usuario.id)
+                      if (!m) return null
                       
                       return (
                         <tr 
                           key={usuario.id} 
                           className={cn(
-                            "border-b hover:bg-accent/50",
-                            m.estado === 'alerta' && "bg-red-50 dark:bg-red-950/20"
+                            "border-b transition-colors hover:bg-muted/50",
+                            m.estado === 'sobrecarga' && "bg-red-50 dark:bg-red-950/20",
+                            m.estado === 'alerta' && "bg-yellow-50 dark:bg-yellow-950/20"
                           )}
                         >
-                          <td className="p-2 font-medium">
-                            {usuario.nombre} {usuario.apellido}
+                          {/* COLUMNAS 1-3: STICKY HORIZONTAL (con bg sólido) */}
+                          <td className="sticky left-0 bg-white dark:bg-slate-950 border-r border-border z-10 p-2 font-mono text-xs">
+                            {m.rut || usuario.rut || 'Sin RUT'}
                           </td>
-                          <td className="text-center p-2">{Math.floor(m.horasTrabajadas)}h</td>
-                          <td className="text-center p-2 text-blue-600">
-                            {m.horasDevueltas > 0 ? `-${Math.floor(m.horasDevueltas)}h` : '-'}
+                          <td className="sticky left-[110px] bg-white dark:bg-slate-950 border-r border-border z-10 p-2 text-center font-bold">
+                            {m.iniciales || usuario.abreviatura?.codigo || '--'}
                           </td>
-                          <td className={cn(
-                            "text-center p-2 font-bold",
-                            m.balanceHLM > 40 ? "text-red-600" : // Muchas HE (sobrecarga)
-                            m.balanceHLM < -10 ? "text-yellow-600" : // Faltan horas
-                            "text-green-600" // Normal (-10 a +40)
-                          )}>
-                            {m.balanceHLM > 0 ? '+' : ''}{m.balanceHLM.toFixed(1)}h
+                          <td className="sticky left-[170px] bg-white dark:bg-slate-950 border-r border-border z-10 p-2 font-medium">
+                            {m.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`}
                           </td>
-                          <td className="text-center p-2">
-                            {m.horasExtras > 0 && (
-                              <span className="text-orange-600 font-semibold">
-                                +{m.horasExtras.toFixed(1)}h
+
+                          {/* COLUMNAS 4-13: MÉTRICAS CORE */}
+                          <td className="p-2 text-center">
+                            {m.SA?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="p-2 text-center">
+                            {m.HLM?.toFixed(1) || '0.0'}
+                          </td>
+                          <td className="p-2 text-center font-semibold">
+                            {m.HT || Math.floor(m.horasTrabajadas) || 0}
+                          </td>
+                          <td className="p-2 text-center text-muted-foreground">
+                            -{m.compensacion?.toFixed(0) || Math.floor(m.horasDevueltas) || 0}
+                          </td>
+                          <td className="p-2 text-center">
+                            {m.HMC?.toFixed(1) || '0.0'}
+                          </td>
+                          <td className="p-2 text-center">
+                            <span className={cn(
+                              'font-medium',
+                              (m.balanceHLM || 0) > 0 && 'text-green-600 dark:text-green-400',
+                              (m.balanceHLM || 0) < 0 && 'text-red-600 dark:text-red-400'
+                            )}>
+                              {(m.balanceHLM || 0) > 0 ? '+' : ''}{m.balanceHLM?.toFixed(1) || '0.0'}
+                            </span>
+                          </td>
+                          <td className="p-2 text-center">
+                            {(m.HE || m.horasExtras || 0) > 0 ? (
+                              <span className="text-green-600 dark:text-green-400 font-medium">
+                                {(m.HE || m.horasExtras)?.toFixed(1)}
                               </span>
+                            ) : (
+                              <span className="text-muted-foreground">0.0</span>
                             )}
                           </td>
-                          {m.horasSemanales.slice(0, 4).map((h, i) => (
-                            <td 
-                              key={i} 
-                              className={cn(
-                                "text-center p-2",
-                                h > 54 && "text-red-600 font-bold"
-                              )}
-                            >
-                              {h || '-'}
+                          <td className="p-2 text-center">
+                            {m.HCP?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="p-2 text-center">
+                            {m.SHE?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="p-2 text-center font-medium">
+                            {m.HAC?.toFixed(2) || '0.00'}
+                          </td>
+
+                          {/* COLUMNAS 14-17: SEMANALES */}
+                          {[0, 1, 2, 3].map((semana) => (
+                            <td key={semana} className={cn(
+                              "p-2 text-center",
+                              (m.horasSemanales?.[semana] || 0) > 54 && "text-red-600 font-bold"
+                            )}>
+                              {m.horasSemanales?.[semana]?.toFixed(0) || 0}h
                             </td>
                           ))}
-                          <td className="text-center p-2">
-                            {m.alertas.length > 0 ? (
+
+                          {/* COLUMNA 18: ALERTAS */}
+                          <td className="p-2 text-center">
+                            {m.alertas && m.alertas.length > 0 ? (
                               <Tooltip>
                                 <TooltipTrigger>
-                                  <Badge variant="destructive" className="cursor-help">
+                                  <Badge variant="destructive" className="cursor-help text-xs">
                                     ⚠️ {m.alertas.length}
                                   </Badge>
                                 </TooltipTrigger>
@@ -1140,7 +1285,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                                 </TooltipContent>
                               </Tooltip>
                             ) : (
-                              <Badge variant="default" className="bg-green-600">✅ OK</Badge>
+                              <span className="text-xs text-muted-foreground">-</span>
                             )}
                           </td>
                         </tr>
@@ -1148,27 +1293,75 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-muted font-semibold">
-                      <td className="p-2">TOTALES</td>
-                      <td className="text-center p-2">
-                        {Math.floor(usuarios.reduce((sum, u) => 
-                          sum + calcularMetricasUsuario(u.id).horasTrabajadas, 0
-                        ))}h
+                    <tr className="bg-muted/50">
+                      {/* COLUMNAS 1-3: STICKY HORIZONTAL */}
+                      <td className="sticky left-0 bg-muted/80 dark:bg-slate-900 border-r border-border z-10 p-2 font-bold">
+                        TOTALES
                       </td>
-                      <td className="text-center p-2 text-blue-600">
-                        -{Math.floor(usuarios.reduce((sum, u) => 
-                          sum + calcularMetricasUsuario(u.id).horasDevueltas, 0
-                        ))}h
+                      <td className="sticky left-[110px] bg-muted/80 dark:bg-slate-900 border-r border-border z-10 p-2 text-center">
+                        --
                       </td>
-                      <td className="text-center p-2" colSpan={6}>
-                        Promedio: {usuarios.length > 0 ? Math.round(usuarios.reduce((sum, u) => 
-                          sum + calcularMetricasUsuario(u.id).balanceHLM, 0
-                        ) / usuarios.length) : 0}h
+                      <td className="sticky left-[170px] bg-muted/80 dark:bg-slate-900 border-r border-border z-10 p-2">
+                        {usuarios.length} funcionarios
                       </td>
-                      <td className="text-center p-2">
-                        {usuarios.filter(u => 
-                          calcularMetricasUsuario(u.id).alertas.length > 0
-                        ).length} alertas
+
+                      {/* COLUMNAS 4-13: TOTALES MÉTRICAS CORE */}
+                      <td className="p-2 text-center font-semibold">
+                        {usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.SA || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="p-2 text-center font-semibold">
+                        {calcularMetricasUsuario(usuarios[0]?.id)?.HLM?.toFixed(1) || '0.0'}
+                      </td>
+                      <td className="p-2 text-center font-bold">
+                        {usuarios.reduce((sum, u) => {
+                          const m = calcularMetricasUsuario(u.id)
+                          return sum + (m?.HT || Math.floor(m?.horasTrabajadas || 0) || 0)
+                        }, 0)}
+                      </td>
+                      <td className="p-2 text-center font-semibold">
+                        -{usuarios.reduce((sum, u) => {
+                          const m = calcularMetricasUsuario(u.id)
+                          return sum + (m?.compensacion || Math.floor(m?.horasDevueltas || 0) || 0)
+                        }, 0).toFixed(0)}
+                      </td>
+                      <td className="p-2 text-center font-semibold">
+                        ⌀ {usuarios.length > 0 ? (usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.HMC || 0), 0) / usuarios.length).toFixed(1) : '0.0'}
+                      </td>
+                      <td className="p-2 text-center font-semibold">
+                        {usuarios.length > 0 ? (usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.balanceHLM || 0), 0) / usuarios.length).toFixed(1) : '0.0'}
+                      </td>
+                      <td className="p-2 text-center font-bold">
+                        {usuarios.reduce((sum, u) => {
+                          const m = calcularMetricasUsuario(u.id)
+                          return sum + (m?.HE || m?.horasExtras || 0)
+                        }, 0).toFixed(1)}
+                      </td>
+                      <td className="p-2 text-center font-semibold">
+                        {usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.HCP || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="p-2 text-center font-semibold">
+                        {usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.SHE || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="p-2 text-center font-bold">
+                        {usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.HAC || 0), 0).toFixed(2)}
+                      </td>
+
+                      {/* COLUMNAS 14-17: TOTALES SEMANALES */}
+                      {[0, 1, 2, 3].map((semana) => (
+                        <td key={semana} className="p-2 text-center font-semibold">
+                          {usuarios.reduce((sum, u) => {
+                            const m = calcularMetricasUsuario(u.id)
+                            return sum + (m?.horasSemanales?.[semana] || 0)
+                          }, 0).toFixed(0)}h
+                        </td>
+                      ))}
+
+                      {/* COLUMNA 18: TOTAL ALERTAS */}
+                      <td className="p-2 text-center font-semibold">
+                        {usuarios.reduce((sum, u) => {
+                          const m = calcularMetricasUsuario(u.id)
+                          return sum + (m?.alertas?.length || 0)
+                        }, 0)}
                       </td>
                     </tr>
                   </tfoot>
@@ -1180,10 +1373,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900 rounded-md">
                   <span className="text-blue-700 dark:text-blue-300">📊</span>
                   <span className="font-semibold text-blue-700 dark:text-blue-300">
-                    HLM: {usuarios.length > 0 ? calcularMetricasUsuario(usuarios[0].id).HLM : 0}h/mes
+                    HLM: {usuarios.length > 0 ? (calcularMetricasUsuario(usuarios[0].id)?.HLM || 0) : 0}h/mes
                   </span>
                   <span className="text-xs text-blue-600 dark:text-blue-400">
-                    ({usuarios.length > 0 ? calcularMetricasUsuario(usuarios[0].id).diasHabiles : 0} días hábiles × 8.8)
+                    ({usuarios.length > 0 ? (calcularMetricasUsuario(usuarios[0].id)?.diasHabiles || 0) : 0} días hábiles × 8.8)
                   </span>
                 </div>
                 <span className="text-sm text-blue-600 dark:text-blue-400">

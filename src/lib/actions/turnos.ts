@@ -436,6 +436,9 @@ export async function asignarTurno(
               codigo: true,
               nombre: true,
               color: true,
+              duracionHoras: true,
+              esNocturno: true,
+              esDiaInhabil: true,
             }
           },
         }
@@ -466,6 +469,9 @@ export async function asignarTurno(
               codigo: true,
               nombre: true,
               color: true,
+              duracionHoras: true,
+              esNocturno: true,
+              esDiaInhabil: true,
             }
           },
         }
