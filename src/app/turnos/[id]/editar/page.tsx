@@ -241,7 +241,11 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       // Cargar asignaciones existentes en el Map
       const asigMap = new Map<string, Asignacion>()
       pub.asignaciones?.forEach((asig: any) => {
-        const key = `${format(new Date(asig.fecha), 'yyyy-MM-dd')}-${asig.usuarioId}`
+        // Extraer solo la parte de fecha (YYYY-MM-DD) sin conversión de zona horaria
+        const fechaStr = asig.fecha instanceof Date 
+          ? asig.fecha.toISOString().split('T')[0]
+          : asig.fecha.split('T')[0]
+        const key = `${fechaStr}-${asig.usuarioId}`
         asigMap.set(key, {
           id: asig.id,
           fecha: new Date(asig.fecha),
@@ -625,7 +629,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
         })
         
         // Crear keys para cada día (usar el usuarioId correcto)
-        const newSelection = dias.map(dia => `${format(dia, 'yyyy-MM-dd')}-${currentUsuarioId}`)
+        const newSelection = dias.map(dia => `${dia.toISOString().split('T')[0]}-${currentUsuarioId}`)
         setSelectedCells(newSelection)
         setLastSelectedCell(key) // Actualizar última celda seleccionada
         toast.success(`${newSelection.length} celda${newSelection.length > 1 ? 's' : ''} seleccionada${newSelection.length > 1 ? 's' : ''}`)
@@ -946,7 +950,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     )
   }
 
-  const fechaInicio = startOfMonth(new Date(publicacion.año, publicacion.mes - 1))
+  // Forzar hora de mediodía para evitar problemas de zona horaria con día 1
+  const fechaInicio = startOfMonth(new Date(publicacion.año, publicacion.mes - 1, 1, 12, 0, 0))
   const fechaFin = endOfMonth(fechaInicio)
   const dias = eachDayOfInterval({ start: fechaInicio, end: fechaFin })
 
@@ -1566,7 +1571,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               </div>
                             </td>
                             {dias.map(dia => {
-                              const fecha = format(dia, 'yyyy-MM-dd')
+                              // Extraer fecha sin conversión de zona horaria
+                              const fecha = dia.toISOString().split('T')[0]
                               const key = `${fecha}-${usuario.id}`
                               const asignacion = asignaciones.get(key)
                               const esFinDeSemana = getDay(dia) === 0 || getDay(dia) === 6
