@@ -93,6 +93,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   const [visibleDaysStart, setVisibleDaysStart] = useState(1)
   const [visibleDaysEnd, setVisibleDaysEnd] = useState(7)
 
+  // Estado para Saldos Anteriores (SA) de los funcionarios
+  const [saldosAnteriores, setSaldosAnteriores] = useState<Map<string, number>>(new Map())
+  const [loadingSaldos, setLoadingSaldos] = useState(false)
+
   const tableContainerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) {
       console.log('✅ CALLBACK REF ejecutado:', {
@@ -119,6 +123,14 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
+
+  // Cargar saldos anteriores cuando la publicación esté disponible
+  useEffect(() => {
+    if (publicacion) {
+      cargarSaldosAnteriores()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicacion?.id])
 
 
   // Calcular días visibles basado en scroll
@@ -269,6 +281,47 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       toast.error('Error al cargar los datos')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  /**
+   * Carga los Saldos Anteriores (SA) de la BD para el mes/año del rol
+   */
+  async function cargarSaldosAnteriores() {
+    if (!publicacion?.unidadId || !publicacion?.mes || !publicacion?.año) {
+      console.log('⏭️ Saltando carga de saldos (publicación no disponible)')
+      return
+    }
+
+    setLoadingSaldos(true)
+    try {
+      const response = await fetch(
+        `/api/metricas/saldos/unidad/${publicacion.unidadId}?mes=${publicacion.mes}&anio=${publicacion.año}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Error al cargar saldos anteriores')
+      }
+
+      const data = await response.json()
+
+      // Crear Map: funcionarioId -> saldoAnterior (prioriza ajuste manual)
+      const saldosMap = new Map<string, number>()
+      data.forEach((item: any) => {
+        // Si tiene ajuste manual, usar ese valor; si no, usar saldo automático
+        const valorSA = item.ajusteManual !== null && item.ajusteManual !== undefined
+          ? item.ajusteManual
+          : item.saldoAutomatico
+        saldosMap.set(item.funcionario.id, valorSA || 0)
+      })
+
+      setSaldosAnteriores(saldosMap)
+      console.log('✅ Saldos anteriores cargados:', saldosMap.size, 'funcionarios')
+    } catch (error) {
+      console.error('❌ Error al cargar saldos anteriores:', error)
+      toast.error('No se pudieron cargar los saldos anteriores')
+    } finally {
+      setLoadingSaldos(false)
     }
   }
 
@@ -865,11 +918,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     // 7. Calcular HMC (Horario Mensual Corregido)
     const HMC = HLM - compensacion
     
-    // 8. Calcular Balance HLM
-    const balanceHLM = calculadorPRODRH22.calcularBalanceHLM(HT, HLM)
-    
-    // 9. Calcular HE (Horas Extras)
-    const HE = Math.max(0, balanceHLM)
+    // 8. Calcular HE (Horas Extras)
+    // HE = Horas que exceden HLM (solo valores positivos)
+    const HE = Math.max(0, HT - HLM)
     
     // 10. Calcular HCP (Horas Compensables a pagar - 70%)
     const porcentajePago = 70
@@ -879,7 +930,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     const SHE = HE - HCP
     
     // 12. Calcular HAC (Horas Acumuladas = SA + SHE)
-    const SA = 0 // TODO: Obtener SA real del mes anterior
+    // Obtener SA del estado cargado de la BD (prioriza ajustes manuales)
+    const SA = saldosAnteriores.get(usuarioId) || 0
     const HAC = SA + SHE
     
     // 13. Calcular horas semanales (específico de este panel /editar)
@@ -900,8 +952,9 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       }
     })
     
-    // 14. Calcular estado (sobrecarga/alerta/ok)
-    const estado = balanceHLM > 40 ? 'sobrecarga' : balanceHLM < -10 ? 'alerta' : 'ok'
+    // 13. Calcular estado (sobrecarga/alerta/ok)
+    const diferenciaHLM = HT - HLM
+    const estado = diferenciaHLM > 40 ? 'sobrecarga' : diferenciaHLM < -10 ? 'alerta' : 'ok'
     
     // 15. Retornar objeto con TODAS las métricas CORE + datos adicionales
     return {
@@ -910,13 +963,12 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       iniciales,
       nombreCompleto,
       
-      // Columnas 4-13: Métricas CORE PRO DRH 22 (10 métricas)
+      // Columnas 4-12: Métricas CORE PRO DRH 22 (9 métricas)
       SA,
       HLM,
       HT,
       compensacion,
       HMC,
-      balanceHLM,
       HE,
       HCP,
       SHE,
@@ -1158,23 +1210,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         HMC
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        <div className="flex items-center justify-center gap-1">
-                          Balance HLM
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">Balance = HT - HLM</p>
-                                <p className="text-xs">Positivo: horas extras</p>
-                                <p className="text-xs">Negativo: horas faltantes</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </th>
-                      <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
                         HE
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
@@ -1247,15 +1282,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                           </td>
                           <td className="p-2 text-center">
                             {m.HMC?.toFixed(1) || '0.0'}
-                          </td>
-                          <td className="p-2 text-center">
-                            <span className={cn(
-                              'font-medium',
-                              (m.balanceHLM || 0) > 0 && 'text-green-600 dark:text-green-400',
-                              (m.balanceHLM || 0) < 0 && 'text-red-600 dark:text-red-400'
-                            )}>
-                              {(m.balanceHLM || 0) > 0 ? '+' : ''}{m.balanceHLM?.toFixed(1) || '0.0'}
-                            </span>
                           </td>
                           <td className="p-2 text-center">
                             {(m.HE || m.horasExtras || 0) > 0 ? (
@@ -1345,9 +1371,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       </td>
                       <td className="p-2 text-center font-semibold">
                         ⌀ {usuarios.length > 0 ? (usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.HMC || 0), 0) / usuarios.length).toFixed(1) : '0.0'}
-                      </td>
-                      <td className="p-2 text-center font-semibold">
-                        {usuarios.length > 0 ? (usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.balanceHLM || 0), 0) / usuarios.length).toFixed(1) : '0.0'}
                       </td>
                       <td className="p-2 text-center font-bold">
                         {usuarios.reduce((sum, u) => {

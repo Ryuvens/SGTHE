@@ -229,31 +229,6 @@ export class CalculadorMetricasPRODRH22 {
   }
 
   /**
-   * Calcula el balance entre HT y HLM según PRO DRH 22
-   * Balance positivo (+) = horas extraordinarias a compensar
-   * Balance negativo (-) = horas faltantes (posible descuento)
-   * 
-   * @param HT - Horas Trabajadas (horas reales trabajadas en el mes)
-   * @param HLM - Horario Legal Mensual (horas obligatorias del mes)
-   * @returns Balance en horas (HT - HLM)
-   * 
-   * @example
-   * calcularBalanceHLM(230.0, 202.4) // +27.6h (horas extras a pagar)
-   * calcularBalanceHLM(180.0, 202.4) // -22.4h (horas faltantes)
-   * calcularBalanceHLM(202.4, 202.4) // 0.0h (jornada exacta)
-   */
-  calcularBalanceHLM(HT: number, HLM: number): number {
-    if (HLM < 0 || HT < 0) {
-      throw new Error('HLM y HT no pueden ser negativos');
-    }
-    
-    const balance = HT - HLM;
-    
-    // Redondear a 1 decimal
-    return Math.round(balance * 10) / 10;
-  }
-
-  /**
    * Calcula las horas a pagar según el porcentaje de pago configurado
    * Basado en PRO DRH 22 Capítulo 3.6
    * 
@@ -407,9 +382,6 @@ export class CalculadorMetricasPRODRH22 {
     // HT ajustado (después de deducciones)
     const HT_ajustado = datos.HT - deducciones;
     
-    // Balance HLM (HT primero, HLM segundo - parámetros corregidos)
-    const balanceHLM = this.calcularBalanceHLM(HT_ajustado, HLM);
-    
     // HE total (solo si HT_ajustado > HLM)
     const HE_total = Math.max(0, HT_ajustado - HLM);
     
@@ -433,7 +405,8 @@ export class CalculadorMetricasPRODRH22 {
     
     // Validar si requiere ajuste
     const nivelAlerta = this.validarLimitesAcumulacion(horasAcumuladas);
-    const requiereAjuste = nivelAlerta === 'CRITICO' || balanceHLM < -50;
+    const diferenciaHLM = HT_ajustado - HLM;
+    const requiereAjuste = nivelAlerta === 'CRITICO' || diferenciaHLM < -50;
     
     return {
       funcionarioId: datos.funcionarioId,
@@ -445,7 +418,6 @@ export class CalculadorMetricasPRODRH22 {
       HE_diurnas: datos.HE_diurnas,
       HE_nocturnas: datos.HE_nocturnas,
       HE_festivas: datos.HE_festivas,
-      balanceHLM,
       compensacionTotal,
       diasFeriado: datos.diasFeriado || 0,
       diasLicencia: datos.diasLicencia || 0,
@@ -481,6 +453,5 @@ export const {
   calcularHTDesdeAsignaciones,
   clasificarHEPorTipo,
   calcularCompensaciones,
-  calcularBalanceHLM,
 } = calculadorPRODRH22;
 
