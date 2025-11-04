@@ -62,7 +62,6 @@ export interface MetricasFuncionario {
   HT: number;           // Horas Trabajadas
   compensacion: number; // Suma de descansos complementarios
   HMC: number;          // Horario Mensual Corregido (HLM - Compensación)
-  balanceHLM: number;   // Balance HLM (HT - HLM)
   HE: number;           // Horas Extras
   HCP: number;          // Horas Compensables (a pagar)
   SHE: number;          // Saldo Horas Extras (HE - HCP)
@@ -87,7 +86,6 @@ export interface ResumenMetricasUnidad {
     HT: number;
     compensacion: number;
     HMC: number;
-    balanceHLM: number;
     HE: number;
     SA: number;
     HCP: number;
@@ -222,7 +220,6 @@ export async function calcularMetricasUnidad(
     HT: 0, 
     compensacion: 0, 
     HMC: 0, 
-    balanceHLM: 0, 
     HE: 0, 
     SA: 0, 
     HCP: 0, 
@@ -273,10 +270,9 @@ export async function calcularMetricasUnidad(
     const HCP = metricasCompletas.horasPago;
     const HAC = metricasCompletas.saldoSiguiente;
 
-    // Calcular las 4 métricas nuevas
+    // Calcular las 3 métricas nuevas
     const compensacion = metricasCompletas.horasDescansoComp || 0;
     const HMC = hlm - compensacion; // Horario Mensual Corregido
-    const balanceHLM = metricasCompletas.balanceHLM; // HT - HLM
     const SHE = HE - HCP; // Saldo Horas Extras
 
     const metricaFuncionario: MetricasFuncionario = {
@@ -293,7 +289,6 @@ export async function calcularMetricasUnidad(
       HT: HT,  // Entero puro - ya viene de Math.floor()
       compensacion: Number(compensacion.toFixed(2)),
       HMC: Number(HMC.toFixed(2)),
-      balanceHLM: Number(balanceHLM.toFixed(2)),
       HE: Number(HE.toFixed(2)),
       HCP: Number(HCP.toFixed(2)),
       SHE: Number(SHE.toFixed(2)),
@@ -318,7 +313,6 @@ export async function calcularMetricasUnidad(
     totales.HT += metricaFuncionario.HT;
     totales.compensacion += metricaFuncionario.compensacion;
     totales.HMC += metricaFuncionario.HMC;
-    totales.balanceHLM += metricaFuncionario.balanceHLM;
     totales.HE += metricaFuncionario.HE;
     totales.SA += metricaFuncionario.SA;
     totales.HCP += metricaFuncionario.HCP;
@@ -366,7 +360,6 @@ export async function calcularMetricasUnidad(
     HT: Number(totales.HT.toFixed(2)),
     compensacion: Number(totales.compensacion.toFixed(2)),
     HMC: Number(totales.HMC.toFixed(2)),
-    balanceHLM: Number(totales.balanceHLM.toFixed(2)),
     HE: Number(totales.HE.toFixed(2)),
     SA: Number(totales.SA.toFixed(2)),
     HCP: Number(totales.HCP.toFixed(2)),

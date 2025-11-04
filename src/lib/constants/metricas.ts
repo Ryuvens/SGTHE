@@ -4,7 +4,6 @@ export const METRICAS_CORE = [
   'HT',           // Horas Trabajadas
   'compensacion', // Descansos complementarios
   'HMC',          // Horario Mensual Corregido
-  'balanceHLM',   // Balance HT - HLM
   'HE',           // Horas Extras
   'HCP',          // Horas Compensables (a pagar)
   'SHE',          // Saldo Horas Extras
@@ -42,11 +41,6 @@ export const DESCRIPCION_METRICAS: Record<string, { nombre: string; descripcion:
     nombre: 'Horario Mensual Corregido',
     descripcion: 'Horario legal ajustado por descansos complementarios otorgados. En resumen global se muestra el promedio de la unidad',
     calculo: 'HLM - Compensación (⌀ promedio en resumen)',
-  },
-  balanceHLM: {
-    nombre: 'Balance HLM',
-    descripcion: 'Diferencia entre horas trabajadas y horario legal. Positivo = horas extras, Negativo = déficit',
-    calculo: 'HT - HLM',
   },
   HE: {
     nombre: 'Horas Extras',
@@ -92,5 +86,5 @@ export const DESCRIPCION_METRICAS: Record<string, { nombre: string; descripcion:
 
 export const CONFIGURACION_DEFAULT = {
   metricasVisibles: METRICAS_CORE,
-  ordenMetricas: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], // SA, HLM, HT, compensacion, HMC, balanceHLM, HE, HCP, SHE, HAC
+  ordenMetricas: [0, 1, 2, 3, 4, 5, 6, 7, 8], // SA, HLM, HT, compensacion, HMC, HE, HCP, SHE, HAC
 };

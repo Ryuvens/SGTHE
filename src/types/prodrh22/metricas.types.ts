@@ -28,7 +28,6 @@ export interface MetricasPRODRH22 {
   HE_festivas: number; // Sábados, domingos, festivos, recargo 50%
   
   // Balance y compensación
-  balanceHLM: number; // HLM - HT (positivo = horas faltantes, negativo = exceso)
   compensacionTotal: number; // Monto total en pesos ($) por HE
   
   // Deducciones (Capítulo 3.4)
