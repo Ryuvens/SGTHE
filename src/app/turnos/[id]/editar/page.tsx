@@ -938,8 +938,8 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       esFestivo: false
     }))
     
-    // 5. Calcular HT usando servicio PRO DRH 22 (con Math.floor interno)
-    const HT = calculadorPRODRH22.calcularHTDesdeAsignaciones(asignacionesFormateadas)
+    // 5. Calcular HMR (Horario Mensual Realizado) usando servicio PRO DRH 22 (con Math.floor interno)
+    const HMR = calculadorPRODRH22.calcularHMRDesdeAsignaciones(asignacionesFormateadas)
     
     // 6. Calcular compensación (descansos complementarios)
     // Valores según PRO DRH 22 - Horas de devolución por código
@@ -967,7 +967,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     
     // 8. Calcular HE (Horas Extras)
     // HE = Horas que exceden HLM (solo valores positivos)
-    const HE = Math.max(0, HT - HLM)
+    const HE = Math.max(0, HMR - HLM)
     
     // 10. Calcular HCP (Horas Compensables a pagar - 70%)
     const porcentajePago = 70
@@ -1000,7 +1000,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     })
     
     // 13. Calcular estado (sobrecarga/alerta/ok)
-    const diferenciaHLM = HT - HLM
+    const diferenciaHLM = HMR - HLM
     const estado = diferenciaHLM > 40 ? 'sobrecarga' : diferenciaHLM < -10 ? 'alerta' : 'ok'
     
     // 15. Retornar objeto con TODAS las métricas CORE + datos adicionales
@@ -1013,7 +1013,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       // Columnas 4-12: Métricas CORE PRO DRH 22 (9 métricas)
       SA,
       HLM,
-      HT,
+      HMR,  // Horario Mensual Realizado
       compensacion,
       HMC,
       HE,
@@ -1030,7 +1030,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
       estado,
       
       // Legado (para compatibilidad)
-      horasTrabajadas: HT,
+      horasTrabajadas: HMR,  // HMR = Horario Mensual Realizado
       horasDevueltas: compensacion,
       horasExtras: HE
     }
@@ -1262,7 +1262,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         HLM
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        HT
+                        HMR
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
                         <div className="flex items-center justify-center gap-1">
@@ -1310,7 +1310,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                               <TooltipContent>
                                 <p className="text-xs font-semibold">Horas Extras</p>
                                 <p className="text-xs">Horas trabajadas sobre el horario legal mensual</p>
-                                <p className="text-xs font-mono">HE = HT - HLM (si HT &gt; HLM)</p>
+                                <p className="text-xs font-mono">HE = HMR - HLM (si HMR &gt; HLM)</p>
                                 <p className="text-xs text-muted-foreground mt-1">Nota: El cálculo real incluye ponderación de horas nocturnas y días inhábiles según PRO DRH 22</p>
                               </TooltipContent>
                             </Tooltip>
@@ -1425,7 +1425,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                             {m.HLM?.toFixed(1) || '0.0'}
                           </td>
                           <td className="p-2 text-center font-semibold">
-                            {m.HT || Math.floor(m.horasTrabajadas) || 0}
+                            {m.HMR || Math.floor(m.horasTrabajadas) || 0}
                           </td>
                           <td className="p-2 text-center text-muted-foreground">
                             -{m.compensacion?.toFixed(0) || Math.floor(m.horasDevueltas) || 0}
@@ -1510,7 +1510,7 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                       <td className="p-2 text-center font-bold">
                         {usuarios.reduce((sum, u) => {
                           const m = calcularMetricasUsuario(u.id)
-                          return sum + (m?.HT || Math.floor(m?.horasTrabajadas || 0) || 0)
+                          return sum + (m?.HMR || Math.floor(m?.horasTrabajadas || 0) || 0)
                         }, 0)}
                       </td>
                       <td className="p-2 text-center font-semibold">
