@@ -45,15 +45,21 @@ function getEjemplo(metrica: Metrica): React.ReactNode {
         excluyendo festivos. Se calcula automáticamente.
       </>
     ),
-    HT: (
+    HMR: (
       <>
+        <strong>Horario Mensual Realizado (HMR)</strong>
+        <br />
+        <br />
         Si un funcionario tiene asignados:
         <br />
         • 10 turnos de 8 horas = 80h
         <br />
         • 8 turnos de 12 horas = 96h
         <br />
-        <strong>Total HT = 176 horas</strong>
+        <strong>Total HMR = 176 horas (suma bruta no ponderada, truncada)</strong>
+        <br />
+        <br />
+        💡 HMR es la suma de todas las horas trabajadas efectivamente durante el mes.
       </>
     ),
     compensacion: (
