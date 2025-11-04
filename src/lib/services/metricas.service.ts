@@ -59,7 +59,7 @@ export interface MetricasFuncionario {
   // Métricas CORE
   SA: number;           // Saldo Anterior
   HLM: number;          // Horario Legal Mensual
-  HT: number;           // Horas Trabajadas
+  HMR: number;          // Horario Mensual Realizado (horas trabajadas efectivamente)
   compensacion: number; // Suma de descansos complementarios
   HMC: number;          // Horario Mensual Corregido (HLM - Compensación)
   HE: number;           // Horas Extras
@@ -83,7 +83,7 @@ export interface ResumenMetricasUnidad {
   metricas: MetricasFuncionario[];
   totales: {
     HLM: number;
-    HT: number;
+    HMR: number;  // Horario Mensual Realizado
     compensacion: number;
     HMC: number;
     HE: number;
@@ -217,7 +217,7 @@ export async function calcularMetricasUnidad(
   const metricas: MetricasFuncionario[] = [];
   let totales = { 
     HLM: 0, 
-    HT: 0, 
+    HMR: 0,  // Horario Mensual Realizado
     compensacion: 0, 
     HMC: 0, 
     HE: 0, 
@@ -233,14 +233,14 @@ export async function calcularMetricasUnidad(
       a => a.usuarioId === funcionario.id
     );
 
-    // NUEVO: Calcular HT usando servicio PRO DRH 22 (con truncado Math.floor)
-    const HT = calculadorPRODRH22.calcularHTDesdeAsignaciones(asignacionesFuncionario);
+    // NUEVO: Calcular HMR usando servicio PRO DRH 22 (con truncado Math.floor)
+    const HMR = calculadorPRODRH22.calcularHMRDesdeAsignaciones(asignacionesFuncionario);
 
     // NUEVO: Clasificar HE por tipo usando servicio PRO DRH 22
     const { HE_total, HE_diurnas, HE_nocturnas, HE_festivas } = 
       calculadorPRODRH22.clasificarHEPorTipo(
         asignacionesFuncionario,
-        HT,
+        HMR,
         hlm
       );
 
@@ -256,7 +256,7 @@ export async function calcularMetricasUnidad(
       funcionarioId: funcionario.id,
       mes,
       anio,
-      HT,
+      HMR,  // Horario Mensual Realizado
       HE_diurnas,
       HE_nocturnas,
       HE_festivas,
@@ -286,7 +286,7 @@ export async function calcularMetricasUnidad(
       },
       SA: Number(SA.toFixed(2)),
       HLM: Number(hlm.toFixed(2)),
-      HT: HT,  // Entero puro - ya viene de Math.floor()
+      HMR: HMR,  // Entero puro - ya viene de Math.floor()
       compensacion: Number(compensacion.toFixed(2)),
       HMC: Number(HMC.toFixed(2)),
       HE: Number(HE.toFixed(2)),
@@ -310,7 +310,7 @@ export async function calcularMetricasUnidad(
 
     // Acumular totales
     totales.HLM += hlm;
-    totales.HT += metricaFuncionario.HT;
+    totales.HMR += metricaFuncionario.HMR;
     totales.compensacion += metricaFuncionario.compensacion;
     totales.HMC += metricaFuncionario.HMC;
     totales.HE += metricaFuncionario.HE;
@@ -333,7 +333,7 @@ export async function calcularMetricasUnidad(
           },
         },
         update: {
-          horasTrabajadas: metrica.HT,
+          horasTrabajadas: metrica.HMR,  // HMR → horasTrabajadas en BD
           horasExtras: metrica.HE,
           horasCompensables: metrica.HCP,
           horasAcumuladas: metrica.HAC,
@@ -345,7 +345,7 @@ export async function calcularMetricasUnidad(
           mes,
           anio,
           saldoAnterior: metrica.SA,
-          horasTrabajadas: metrica.HT,
+          horasTrabajadas: metrica.HMR,  // HMR → horasTrabajadas en BD
           horasExtras: metrica.HE,
           horasCompensables: metrica.HCP,
           horasAcumuladas: metrica.HAC,
@@ -357,7 +357,7 @@ export async function calcularMetricasUnidad(
   // Redondear totales
   totales = {
     HLM: Number(totales.HLM.toFixed(2)),
-    HT: Number(totales.HT.toFixed(2)),
+    HMR: Number(totales.HMR.toFixed(2)),  // Horario Mensual Realizado
     compensacion: Number(totales.compensacion.toFixed(2)),
     HMC: Number(totales.HMC.toFixed(2)),
     HE: Number(totales.HE.toFixed(2)),

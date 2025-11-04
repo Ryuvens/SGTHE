@@ -101,17 +101,18 @@ export class CalculadorMetricasPRODRH22 {
   }
 
   /**
-   * Calcula HT (Horas Trabajadas) desde array de asignaciones
+   * Calcula HMR (Horario Mensual Realizado) desde array de asignaciones
    * Suma todas las duraciones y aplica truncado según PRO DRH 22
+   * HMR = Suma bruta y no ponderada de horas trabajadas efectivamente
    * 
    * @param asignaciones - Array de asignaciones de turno
-   * @returns HT truncado a enteros (sin decimales)
+   * @returns HMR truncado a enteros (sin decimales)
    * 
    * @example
-   * calcularHTDesdeAsignaciones([{duracion: 9.5}, {duracion: 12.3}])
-   * // Suma: 21.8 → Truncado: 21h
+   * calcularHMRDesdeAsignaciones([{duracion: 9.5}, {duracion: 12.3}])
+   * // Suma: 21.8 → Truncado: 21h (HMR)
    */
-  calcularHTDesdeAsignaciones(
+  calcularHMRDesdeAsignaciones(
     asignaciones: Array<{ duracion?: number | null; tipoTurno?: { duracionHoras?: number | null } | null }>
   ): number {
     const suma = asignaciones.reduce((total, asignacion) => {
@@ -119,7 +120,7 @@ export class CalculadorMetricasPRODRH22 {
       return total + duracion;
     }, 0);
     
-    // PRO DRH 22: Truncar HT mensual (sin decimales)
+    // PRO DRH 22: Truncar HMR mensual (sin decimales)
     return Math.floor(suma);
   }
 
@@ -128,13 +129,13 @@ export class CalculadorMetricasPRODRH22 {
    * PRO DRH 22 distingue entre HE diurnas (recargo 25%), nocturnas (50%) y festivas (50%)
    * 
    * @param asignaciones - Array de asignaciones con campos esNocturno, esDiaInhabil, esFestivo
-   * @param HT - Horas trabajadas totales (truncadas)
+   * @param HMR - Horario Mensual Realizado (horas trabajadas totales truncadas)
    * @param HLM - Horario legal mensual
    * @returns Objeto con HE clasificadas por tipo
    * 
    * @example
    * clasificarHEPorTipo(asignaciones, 230, 202.4)
-   * // HE_total: 27.6h
+   * // HE_total: 27.6h (basado en HMR)
    * // Distribuye según proporción de turnos diurnos/nocturnos/festivos
    */
   clasificarHEPorTipo(
@@ -145,7 +146,7 @@ export class CalculadorMetricasPRODRH22 {
       esDiaInhabil?: boolean;
       esFestivo?: boolean;
     }>,
-    HT: number,
+    HMR: number,
     HLM: number
   ): {
     HE_diurnas: number;
@@ -153,8 +154,8 @@ export class CalculadorMetricasPRODRH22 {
     HE_festivas: number;
     HE_total: number;
   } {
-    // Solo hay HE si HT > HLM
-    const HE_total = Math.max(0, HT - HLM);
+    // Solo hay HE si HMR > HLM
+    const HE_total = Math.max(0, HMR - HLM);
     
     if (HE_total === 0) {
       return { HE_diurnas: 0, HE_nocturnas: 0, HE_festivas: 0, HE_total: 0 };
@@ -352,7 +353,7 @@ export class CalculadorMetricasPRODRH22 {
     funcionarioId: string;
     mes: number;
     anio: number;
-    HT: number;
+    HMR: number;  // Horario Mensual Realizado
     HE_diurnas: number;
     HE_nocturnas: number;
     HE_festivas: number;
@@ -379,11 +380,11 @@ export class CalculadorMetricasPRODRH22 {
       datos.horasPermisoLactancia || 0
     );
     
-    // HT ajustado (después de deducciones)
-    const HT_ajustado = datos.HT - deducciones;
+    // HMR ajustado (después de deducciones)
+    const HMR_ajustado = datos.HMR - deducciones;
     
-    // HE total (solo si HT_ajustado > HLM)
-    const HE_total = Math.max(0, HT_ajustado - HLM);
+    // HE total (solo si HMR_ajustado > HLM)
+    const HE_total = Math.max(0, HMR_ajustado - HLM);
     
     // Compensación total (factor de horas equivalentes con recargo)
     const compensacionTotal = this.calcularCompensaciones(
@@ -405,7 +406,7 @@ export class CalculadorMetricasPRODRH22 {
     
     // Validar si requiere ajuste
     const nivelAlerta = this.validarLimitesAcumulacion(horasAcumuladas);
-    const diferenciaHLM = HT_ajustado - HLM;
+    const diferenciaHLM = HMR_ajustado - HLM;
     const requiereAjuste = nivelAlerta === 'CRITICO' || diferenciaHLM < -50;
     
     return {
@@ -414,7 +415,7 @@ export class CalculadorMetricasPRODRH22 {
       anio: datos.anio,
       diasHabiles,
       HLM,
-      HT: datos.HT,
+      HMR: datos.HMR,
       HE_diurnas: datos.HE_diurnas,
       HE_nocturnas: datos.HE_nocturnas,
       HE_festivas: datos.HE_festivas,
@@ -424,7 +425,7 @@ export class CalculadorMetricasPRODRH22 {
       horasPermisoAdmin: datos.horasPermisoAdmin || 0,
       horasDescansoComp: datos.horasDescansoComp || 0,
       horasPermisoLactancia: datos.horasPermisoLactancia,
-      HT_ajustado,
+      HMR_ajustado,
       HE_total,
       porcentajePago,
       porcentajeAcumulacion,
@@ -450,7 +451,7 @@ export const calculadorPRODRH22 = new CalculadorMetricasPRODRH22();
 export const {
   calcularHLM,
   calcularDiasHabiles,
-  calcularHTDesdeAsignaciones,
+  calcularHMRDesdeAsignaciones,  // Horario Mensual Realizado
   clasificarHEPorTipo,
   calcularCompensaciones,
 } = calculadorPRODRH22;
