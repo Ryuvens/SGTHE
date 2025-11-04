@@ -1195,7 +1195,21 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
 
                       {/* COLUMNAS 4-13: MÉTRICAS CORE - STICKY SOLO VERTICAL */}
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        SA
+                        <div className="flex items-center justify-center gap-1">
+                          SA
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Saldo Anterior</p>
+                                <p className="text-xs">Horas acumuladas del mes ANTERIOR (HAC del mes previo)</p>
+                                <p className="text-xs">Se consume durante el mes para otorgar descansos complementarios</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
                         HLM
@@ -1204,22 +1218,111 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         HT
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        Comp.
+                        <div className="flex items-center justify-center gap-1">
+                          Comp.
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Compensación (DC)</p>
+                                <p className="text-xs">Horas YA DESCANSADAS durante el mes</p>
+                                <p className="text-xs">Se consumen del Saldo Anterior (SA)</p>
+                                <p className="text-xs">Tipos: DA, DV, DC, DN, DS</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        HMC
+                        <div className="flex items-center justify-center gap-1">
+                          HMC
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Horario Mensual Corregido</p>
+                                <p className="text-xs">Jornada legal AJUSTADA por descansos ya otorgados</p>
+                                <p className="text-xs font-mono">HMC = HLM - Comp.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        HE
+                        <div className="flex items-center justify-center gap-1">
+                          HE
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Horas Extras</p>
+                                <p className="text-xs">Horas trabajadas sobre el horario legal mensual</p>
+                                <p className="text-xs font-mono">HE = HT - HLM (si HT &gt; HLM)</p>
+                                <p className="text-xs text-muted-foreground mt-1">Nota: El cálculo real incluye ponderación de horas nocturnas y días inhábiles según PRO DRH 22</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        HCP
+                        <div className="flex items-center justify-center gap-1">
+                          HCP
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Horas Compensables (a pagar)</p>
+                                <p className="text-xs">Porción de HE que se paga en efectivo</p>
+                                <p className="text-xs font-mono">HCP = HE × (% Pago)</p>
+                                <p className="text-xs text-muted-foreground">El % se configura mensualmente en la unidad</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        SHE
+                        <div className="flex items-center justify-center gap-1">
+                          SHE
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Saldo Horas Extras</p>
+                                <p className="text-xs">Porción de HE que se acumula para el siguiente mes</p>
+                                <p className="text-xs font-mono">SHE = HE - HCP</p>
+                                <p className="text-xs text-muted-foreground">Equivale al % de acumulación configurado en la unidad</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        HAC
+                        <div className="flex items-center justify-center gap-1">
+                          HAC
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Horas Acumuladas</p>
+                                <p className="text-xs">Saldo de horas para el SIGUIENTE mes</p>
+                                <p className="text-xs font-mono">HAC = SA + SHE</p>
+                                <p className="text-xs">Este valor será el SA del próximo mes</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
 
                       {/* COLUMNAS 14-17: SEMANALES - STICKY SOLO VERTICAL */}

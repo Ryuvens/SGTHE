@@ -59,8 +59,8 @@ export const DESCRIPCION_METRICAS: Record<string, { nombre: string; descripcion:
   },
   HAC: {
     nombre: 'Horas Acumuladas',
-    descripcion: 'Saldo de horas para el siguiente mes',
-    calculo: 'HE - HCP + SA',
+    descripcion: 'Saldo de horas extraordinarias para el siguiente mes. Se calcula sumando el saldo anterior más las horas extras que se acumulan (no se pagan)',
+    calculo: 'SA + SHE  (equivalente a: SA + (HE - HCP))',
   },
   TD: {
     nombre: 'Turnos Diurnos',

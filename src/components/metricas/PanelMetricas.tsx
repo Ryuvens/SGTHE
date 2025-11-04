@@ -41,7 +41,6 @@ interface MetricasFuncionario {
   HT: number;           // Horas Trabajadas
   compensacion: number; // Descansos complementarios
   HMC: number;          // Horario Mensual Corregido
-  balanceHLM: number;   // Balance HT - HLM
   HE: number;           // Horas Extras
   HCP: number;          // Horas Compensables
   SHE: number;          // Saldo Horas Extras
@@ -66,7 +65,6 @@ interface ResumenMetricas {
     HT: number;
     compensacion: number;
     HMC: number;
-    balanceHLM: number;
     HE: number;
     SA: number;
     HCP: number;
@@ -89,7 +87,7 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
   const [mostrarOpcionales, setMostrarOpcionales] = useState(false);
   const [configuracionCargada, setConfiguracionCargada] = useState(false);
   const [ordenMetricas, setOrdenMetricas] = useState([
-    'SA', 'HLM', 'HT', 'compensacion', 'HMC', 'balanceHLM', 'HE', 'HCP', 'SHE', 'HAC'
+    'SA', 'HLM', 'HT', 'compensacion', 'HMC', 'HE', 'HCP', 'SHE', 'HAC'
   ]);
   const [modalConfigAbierto, setModalConfigAbierto] = useState(false);
   const [modalInfoAbierto, setModalInfoAbierto] = useState(false);
@@ -162,8 +160,10 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
     if (metrica.HAC < 0) {
       return { tipo: 'negativo', icono: '🔴', mensaje: 'Saldo negativo' };
     }
-    if (metrica.balanceHLM < 0) {
-      return { tipo: 'deficit', icono: '⚠️', mensaje: `Déficit de ${Math.abs(metrica.balanceHLM).toFixed(1)}h` };
+    // Alertas de déficit (basado en HT vs HLM)
+    const deficit = metrica.HT - metrica.HLM;
+    if (deficit < -10) {
+      return { tipo: 'deficit', icono: '⚠️', mensaje: `Déficit de ${Math.abs(deficit).toFixed(1)}h` };
     }
     if (metrica.HAC > 10) {
       return { tipo: 'acumulacion', icono: '⚠️', mensaje: 'Acumulación alta' };
@@ -196,7 +196,7 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
     return datos.metricas.reduce(
       (acc, m) => {
         if (m.HAC < 0) acc.negativos++;
-        else if (m.balanceHLM < 0) acc.deficit++;
+        else if ((m.HT - m.HLM) < -10) acc.deficit++;
         else if (m.HAC > 10) acc.acumulacion++;
         return acc;
       },
@@ -235,7 +235,6 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
       
       // Aplicar estilos especiales
       const esHAC = metricaCodigo === 'HAC';
-      const esBalanceHLM = metricaCodigo === 'balanceHLM';
       const esSHE = metricaCodigo === 'SHE';
       const valorNumerico = typeof valor === 'number' ? valor : 0;
       
@@ -246,9 +245,6 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
             // Estilos para HAC
             esHAC && valorNumerico < 0 && 'text-red-600 font-bold',
             esHAC && valorNumerico > 10 && 'text-orange-600 font-medium',
-            // Estilos para balanceHLM (negativo = falta horas, rojo)
-            esBalanceHLM && valorNumerico < 0 && 'text-red-600 font-bold',
-            esBalanceHLM && valorNumerico > 0 && 'text-green-600',
             // Estilos para SHE
             esSHE && valorNumerico < 0 && 'text-red-600'
           )}
@@ -340,7 +336,7 @@ export default function PanelMetricas({ unidadId, nombreUnidad }: PanelMetricasP
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {['SA', 'HLM', 'HT', 'compensacion', 'HMC', 'balanceHLM', 'HE', 'HCP', 'SHE', 'HAC'].map((metricaCodigo) => {
+              {['SA', 'HLM', 'HT', 'compensacion', 'HMC', 'HE', 'HCP', 'SHE', 'HAC'].map((metricaCodigo) => {
                 // HLM es especial: mostrar valor único del mes, no suma
                 // HMC es especial: mostrar promedio, no suma
                 const valor = metricaCodigo === 'HLM' 

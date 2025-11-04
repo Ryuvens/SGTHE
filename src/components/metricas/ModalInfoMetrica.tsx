@@ -90,34 +90,6 @@ function getEjemplo(metrica: Metrica): React.ReactNode {
         descontar los descansos compensatorios otorgados.
       </>
     ),
-    balanceHLM: (
-      <>
-        <strong>Ejemplo de cálculo Balance HLM:</strong>
-        <br />
-        <br />
-        <strong>Caso A - Horas extras:</strong>
-        <br />
-        • HT = 184 horas
-        <br />
-        • HLM = 176 horas
-        <br />
-        • <strong style={{ color: 'green' }}>Balance = 184 - 176 = +8h ✅</strong>
-        <br />
-        <br />
-        <strong>Caso B - Déficit:</strong>
-        <br />
-        • HT = 160 horas
-        <br />
-        • HLM = 176 horas
-        <br />
-        • <strong style={{ color: 'red' }}>Balance = 160 - 176 = -16h ❌</strong>
-        <br />
-        <br />
-        💡 Balance positivo = horas extras trabajadas (se pagan al 150%).
-        <br />
-        Balance negativo = déficit de horas (se descuenta del sueldo o se justifica con licencias).
-      </>
-    ),
     HE: (
       <>
         Si trabajaste 195 horas en el mes:
