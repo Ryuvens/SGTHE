@@ -28,7 +28,7 @@ export async function GET(
     // Obtener todos los funcionarios activos de la unidad
     const funcionarios = await prisma.usuario.findMany({
       where: {
-        unidadId,
+        unidadId: params.unidadId,
         activo: true,
       },
       select: {
