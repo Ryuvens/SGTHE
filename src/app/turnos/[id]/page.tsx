@@ -7,6 +7,54 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { getPublicacion } from '@/lib/actions/turnos'
+import { cn } from '@/lib/utils'
+
+// Festivos de Chile 2024-2025 (para identificación visual según PRO DRH 22)
+const FESTIVOS_CHILE = [
+  // 2024
+  new Date(2024, 0, 1),   // Año Nuevo
+  new Date(2024, 2, 29),  // Viernes Santo 2024
+  new Date(2024, 2, 30),  // Sábado Santo 2024
+  new Date(2024, 4, 1),   // Día del Trabajo
+  new Date(2024, 4, 21),  // Día de las Glorias Navales
+  new Date(2024, 5, 29),  // San Pedro y San Pablo 2024
+  new Date(2024, 6, 16),  // Día de la Virgen del Carmen
+  new Date(2024, 7, 15),  // Asunción de la Virgen
+  new Date(2024, 8, 18),  // Independencia Nacional
+  new Date(2024, 8, 19),  // Día de las Glorias del Ejército
+  new Date(2024, 8, 20),  // Feriado adicional (Fiestas Patrias)
+  new Date(2024, 9, 12),  // Día del Encuentro de Dos Mundos 2024
+  new Date(2024, 9, 31),  // Día de las Iglesias Evangélicas 2024
+  new Date(2024, 10, 1),  // Todos los Santos
+  new Date(2024, 11, 8),  // Inmaculada Concepción
+  new Date(2024, 11, 25), // Navidad
+  
+  // 2025
+  new Date(2025, 0, 1),   // Año Nuevo
+  new Date(2025, 3, 18),  // Viernes Santo 2025
+  new Date(2025, 3, 19),  // Sábado Santo 2025
+  new Date(2025, 4, 1),   // Día del Trabajo
+  new Date(2025, 4, 21),  // Día de las Glorias Navales
+  new Date(2025, 5, 29),  // San Pedro y San Pablo 2025
+  new Date(2025, 6, 16),  // Día de la Virgen del Carmen
+  new Date(2025, 7, 15),  // Asunción de la Virgen
+  new Date(2025, 8, 18),  // Independencia Nacional
+  new Date(2025, 8, 19),  // Día de las Glorias del Ejército
+  new Date(2025, 9, 12),  // Día de la Raza 2025
+  new Date(2025, 9, 31),  // Día de las Iglesias Evangélicas 2025
+  new Date(2025, 10, 1),  // Todos los Santos
+  new Date(2025, 11, 8),  // Inmaculada Concepción
+  new Date(2025, 11, 25), // Navidad
+];
+
+// Función para verificar si una fecha es festivo
+function esFestivo(fecha: Date): boolean {
+  return FESTIVOS_CHILE.some(festivo => 
+    festivo.getDate() === fecha.getDate() &&
+    festivo.getMonth() === fecha.getMonth() &&
+    festivo.getFullYear() === fecha.getFullYear()
+  );
+}
 
 // Colores por defecto para tipos de turno
 const DEFAULT_COLORS: Record<string, string> = {
@@ -211,12 +259,15 @@ export default async function RolDetallePage({ params }: PageProps) {
                     {dias.map(dia => {
                       const diaSemana = getDay(dia)
                       const esFinDeSemana = diaSemana === 0 || diaSemana === 6
+                      const esDiaFestivo = esFestivo(dia)
+                      const esEspecial = esFinDeSemana || esDiaFestivo  // Sáb/Dom/Fest
                       return (
                         <th 
                           key={dia.toISOString()} 
-                          className={`p-1 text-center text-xs min-w-[40px] ${
-                            esFinDeSemana ? 'bg-muted/50' : ''
-                          }`}
+                          className={cn(
+                            "p-1 text-center text-xs min-w-[40px]",
+                            esEspecial && "bg-[#FCFFA4]"  // Amarillo sólido para Sáb/Dom/Fest (PRO DRH 22)
+                          )}
                         >
                           <div className="font-normal capitalize">{format(dia, 'EEE', { locale: es })}</div>
                           <div className="font-bold text-base">{format(dia, 'd')}</div>
@@ -248,13 +299,16 @@ export default async function RolDetallePage({ params }: PageProps) {
                           const asignacion = asignacionesMap.get(key)
                           const diaSemana = getDay(dia)
                           const esFinDeSemana = diaSemana === 0 || diaSemana === 6
+                          const esDiaFestivo = esFestivo(dia)
+                          const esEspecial = esFinDeSemana || esDiaFestivo  // Sáb/Dom/Fest
                           
                           return (
                             <td 
                               key={dia.toISOString()} 
-                              className={`p-1 text-center border-l ${
-                                esFinDeSemana ? 'bg-muted/50' : ''
-                              }`}
+                              className={cn(
+                                "p-1 text-center border-l",
+                                esEspecial && "bg-[#FCFFA4]"  // Amarillo sólido para Sáb/Dom/Fest (PRO DRH 22)
+                              )}
                             >
                               {asignacion && asignacion.tipoTurno && (
                                 <div 

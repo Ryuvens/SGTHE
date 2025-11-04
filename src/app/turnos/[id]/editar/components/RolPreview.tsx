@@ -1,10 +1,12 @@
 'use client'
 
+import { useMemo, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Printer, X } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, getDay } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { cn } from '@/lib/utils'
 
 interface RolPreviewProps {
   open: boolean
@@ -43,6 +45,53 @@ export default function RolPreview({
     { length: new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate() },
     (_, i) => new Date(mes.getFullYear(), mes.getMonth(), i + 1, 12, 0, 0)
   )
+
+  // Festivos de Chile 2024-2025 (para identificación visual según PRO DRH 22)
+  const festivosChile = useMemo(() => [
+    // 2024
+    new Date(2024, 0, 1),   // Año Nuevo
+    new Date(2024, 2, 29),  // Viernes Santo 2024
+    new Date(2024, 2, 30),  // Sábado Santo 2024
+    new Date(2024, 4, 1),   // Día del Trabajo
+    new Date(2024, 4, 21),  // Día de las Glorias Navales
+    new Date(2024, 5, 29),  // San Pedro y San Pablo 2024
+    new Date(2024, 6, 16),  // Día de la Virgen del Carmen
+    new Date(2024, 7, 15),  // Asunción de la Virgen
+    new Date(2024, 8, 18),  // Independencia Nacional
+    new Date(2024, 8, 19),  // Día de las Glorias del Ejército
+    new Date(2024, 8, 20),  // Feriado adicional (Fiestas Patrias)
+    new Date(2024, 9, 12),  // Día del Encuentro de Dos Mundos 2024
+    new Date(2024, 9, 31),  // Día de las Iglesias Evangélicas 2024
+    new Date(2024, 10, 1),  // Todos los Santos
+    new Date(2024, 11, 8),  // Inmaculada Concepción
+    new Date(2024, 11, 25), // Navidad
+    
+    // 2025
+    new Date(2025, 0, 1),   // Año Nuevo
+    new Date(2025, 3, 18),  // Viernes Santo 2025
+    new Date(2025, 3, 19),  // Sábado Santo 2025
+    new Date(2025, 4, 1),   // Día del Trabajo
+    new Date(2025, 4, 21),  // Día de las Glorias Navales
+    new Date(2025, 5, 29),  // San Pedro y San Pablo 2025
+    new Date(2025, 6, 16),  // Día de la Virgen del Carmen
+    new Date(2025, 7, 15),  // Asunción de la Virgen
+    new Date(2025, 8, 18),  // Independencia Nacional
+    new Date(2025, 8, 19),  // Día de las Glorias del Ejército
+    new Date(2025, 9, 12),  // Día de la Raza 2025
+    new Date(2025, 9, 31),  // Día de las Iglesias Evangélicas 2025
+    new Date(2025, 10, 1),  // Todos los Santos
+    new Date(2025, 11, 8),  // Inmaculada Concepción
+    new Date(2025, 11, 25), // Navidad
+  ], []);
+
+  // Función para verificar si una fecha es festivo
+  const esFestivo = useCallback((fecha: Date): boolean => {
+    return festivosChile.some(festivo => 
+      festivo.getDate() === fecha.getDate() &&
+      festivo.getMonth() === fecha.getMonth() &&
+      festivo.getFullYear() === fecha.getFullYear()
+    );
+  }, [festivosChile]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -187,19 +236,29 @@ export default function RolPreview({
                   <th className="border border-gray-300 p-1 text-left font-semibold max-w-[100px] print:max-w-[80px] print:text-[6px]">
                     Funcionario
                   </th>
-                  {diasDelMes.map((dia) => (
-                    <th
-                      key={dia.toISOString()}
-                      className="border border-gray-300 p-1 text-center min-w-[20px] print:p-0.5 print:text-[7px]"
-                    >
-                      <div className="text-xs">
-                        {format(dia, 'EEE', { locale: es })}
-                      </div>
-                      <div className="font-bold">
-                        {format(dia, 'd')}
-                      </div>
-                    </th>
-                  ))}
+                  {diasDelMes.map((dia) => {
+                    const diaSemana = getDay(dia)
+                    const esFinDeSemana = diaSemana === 0 || diaSemana === 6
+                    const esDiaFestivo = esFestivo(dia)
+                    const esEspecial = esFinDeSemana || esDiaFestivo  // Sáb/Dom/Fest
+                    
+                    return (
+                      <th
+                        key={dia.toISOString()}
+                        className={cn(
+                          "border border-gray-300 p-1 text-center min-w-[20px] print:p-0.5 print:text-[7px]",
+                          esEspecial && "bg-[#FCFFA4]"  // Amarillo sólido para Sáb/Dom/Fest (PRO DRH 22)
+                        )}
+                      >
+                        <div className="text-xs">
+                          {format(dia, 'EEE', { locale: es })}
+                        </div>
+                        <div className="font-bold">
+                          {format(dia, 'd')}
+                        </div>
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
 
@@ -214,6 +273,11 @@ export default function RolPreview({
                       </div>
                     </td>
                     {diasDelMes.map((dia) => {
+                      const diaSemana = getDay(dia)
+                      const esFinDeSemana = diaSemana === 0 || diaSemana === 6
+                      const esDiaFestivo = esFestivo(dia)
+                      const esEspecial = esFinDeSemana || esDiaFestivo  // Sáb/Dom/Fest
+                      
                       const turnoDelDia = turnos.find((t) => {
                         // Comparar funcionarioId
                         const matchFuncionario = t.funcionarioId === func.id || 
@@ -232,7 +296,10 @@ export default function RolPreview({
                       return (
                         <td
                           key={dia.toISOString()}
-                          className="border border-gray-300 p-1 text-center print:p-0.5"
+                          className={cn(
+                            "border border-gray-300 p-1 text-center print:p-0.5",
+                            esEspecial && "bg-[#FCFFA4]"  // Amarillo sólido para Sáb/Dom/Fest (PRO DRH 22)
+                          )}
                         >
                           {turnoDelDia && (
                             <div
