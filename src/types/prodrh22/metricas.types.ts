@@ -20,7 +20,7 @@ export interface MetricasPRODRH22 {
   HLM: number; // Horario Legal Mensual = días_hábiles × 8.8
   
   // Horas trabajadas (Capítulo 3.2)
-  HT: number; // Horas Trabajadas totales del mes
+  HMR: number; // Horario Mensual Realizado - Total efectivo trabajado (suma bruta no ponderada)
   
   // Horas extraordinarias por tipo (Capítulo 3.3)
   HE_diurnas: number; // 07:00-21:00, recargo 25%
@@ -40,8 +40,8 @@ export interface MetricasPRODRH22 {
   horasPermisoLactancia?: number; // Horas de permiso de lactancia
   
   // Cálculo final (Capítulo 3.5)
-  HT_ajustado: number; // HT - deducciones
-  HE_total: number; // Total de horas extraordinarias = HT_ajustado - HLM
+  HMR_ajustado: number; // HMR - deducciones (HMR después de descontar ausencias)
+  HE_total: number; // Total de horas extraordinarias = HMR_ajustado - HLM
   
   // Sistema compensatorio (Capítulo 3.6)
   porcentajePago: number; // % de HE que se paga (configurable)
@@ -119,7 +119,7 @@ export interface ResumenUnidadPRODRH22 {
     funcionariosActivos: number;
     diasHabiles: number;
     HLM_total: number;
-    HT_total: number;
+    HMR_total: number;  // Horario Mensual Realizado total de la unidad
     HE_diurnas_total: number;
     HE_nocturnas_total: number;
     HE_festivas_total: number;

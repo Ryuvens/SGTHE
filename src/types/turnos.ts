@@ -54,11 +54,11 @@ export interface PublicacionTurnos {
 export interface ResumenMensual {
   funcionarioId: string
   horaLegalMensual: number // HLM = días hábiles * 8.8
-  horasTrabajadas: number
+  horasTrabajadas: number  // HMR = Horario Mensual Realizado
   horasDiurnas: number
   horasNocturnas: number
   horasSabDomFest: number
-  horasGeneradas: number // Diferencia HT - HLM
+  horasGeneradas: number // Diferencia HMR - HLM
   saldoAnterior: number
   horasDevolucion: number
   saldoActual: number

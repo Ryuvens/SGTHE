@@ -1,7 +1,7 @@
 export const METRICAS_CORE = [
   'SA',           // Saldo Anterior
   'HLM',          // Horario Legal Mensual
-  'HT',           // Horas Trabajadas
+  'HMR',          // Horario Mensual Realizado
   'compensacion', // Descansos complementarios
   'HMC',          // Horario Mensual Corregido
   'HE',           // Horas Extras
@@ -27,10 +27,10 @@ export const DESCRIPCION_METRICAS: Record<string, { nombre: string; descripcion:
     descripcion: 'Horas obligatorias que se deben trabajar en el mes según días hábiles',
     calculo: 'días_hábiles × 8.8 horas',
   },
-  HT: {
-    nombre: 'Horas Trabajadas',
-    descripcion: 'Total de horas asignadas en turnos del mes',
-    calculo: 'Suma de duración de todos los turnos (truncado)',
+  HMR: {
+    nombre: 'Horario Mensual Realizado',
+    descripcion: 'Total de horas trabajadas efectivamente durante el mes (suma bruta no ponderada)',
+    calculo: 'Σ (Horas Diurnas + Nocturnas + Sáb/Dom/Fest) - TRUNCADO',
   },
   compensacion: {
     nombre: 'Compensación',
@@ -45,7 +45,7 @@ export const DESCRIPCION_METRICAS: Record<string, { nombre: string; descripcion:
   HE: {
     nombre: 'Horas Extras',
     descripcion: 'Horas trabajadas sobre el horario legal mensual',
-    calculo: 'HT - HLM (si HT > HLM)',
+    calculo: 'HMR - HLM (si HMR > HLM)',
   },
   HCP: {
     nombre: 'Horas Compensables',
@@ -86,5 +86,5 @@ export const DESCRIPCION_METRICAS: Record<string, { nombre: string; descripcion:
 
 export const CONFIGURACION_DEFAULT = {
   metricasVisibles: METRICAS_CORE,
-  ordenMetricas: [0, 1, 2, 3, 4, 5, 6, 7, 8], // SA, HLM, HT, compensacion, HMC, HE, HCP, SHE, HAC
+  ordenMetricas: [0, 1, 2, 3, 4, 5, 6, 7, 8], // SA, HLM, HMR, compensacion, HMC, HE, HCP, SHE, HAC
 };
