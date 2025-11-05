@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // ============================================
@@ -59,6 +60,10 @@ model Usuario {
   planillasControl        PlanillaControlTurno[]
   historialCompensaciones HistorialCompensacion[]
   configuracionMetricas   ConfiguracionMetricas?
+
+  // ⭐ NUEVO: Relación con versiones creadas y ausencias
+  matrizVersionesCreadas MatrizTurnosVersion[] @relation("MatrizVersionesCreadas")
+  ausencias              Ausencia[]
 
   @@index([unidadId])
   @@index([email])
@@ -122,8 +127,46 @@ model Unidad {
   // Módulo de métricas - relación inversa
   configuracion ConfiguracionUnidad?
 
+  // ⭐ NUEVO: Versionamiento de matriz de turnos
+  matrizVersiones MatrizTurnosVersion[] @relation("MatrizVersiones")
+
   @@index([activa])
   @@index([codigo])
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODELO: MatrizTurnosVersion
+// Versionamiento de tipos de turno por unidad
+// ═══════════════════════════════════════════════════════════
+model MatrizTurnosVersion {
+  id String @id @default(cuid())
+
+  // Relación con unidad
+  unidadId String
+  unidad   Unidad @relation("MatrizVersiones", fields: [unidadId], references: [id], onDelete: Cascade)
+
+  // Versión semántica
+  version     String // "v1.0", "v1.1", "v2.0"
+  descripcion String? // "Agregado turno especial 11S"
+
+  // Estados
+  esActiva    Boolean @default(true) // Solo 1 activa por unidad
+  esBloqueada Boolean @default(false) // Histórico no editable
+
+  // Auditoría
+  creadoPor String
+  creador   Usuario @relation("MatrizVersionesCreadas", fields: [creadoPor], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones inversas
+  tiposTurno    TipoTurno[]
+  publicaciones PublicacionTurnos[]
+
+  @@unique([unidadId, version]) // No duplicar versiones
+  @@index([unidadId, esActiva]) // Query rápida de versión activa
+  @@map("matriz_turnos_versiones")
 }
 
 enum TipoProfesion {
@@ -186,15 +229,29 @@ enum TipoPuesto {
 // ============================================
 
 model TipoTurno {
-  id            String            @id @default(cuid())
-  unidadId      String
-  unidad        Unidad            @relation(fields: [unidadId], references: [id])
+  id String @id @default(cuid())
+
+  // ⭐ NUEVO: Versionamiento
+  matrizVersionId String?
+  matrizVersion   MatrizTurnosVersion? @relation(fields: [matrizVersionId], references: [id], onDelete: Cascade)
+
+  // ✅ MANTENER: Multi-unidad (ya existe)
+  unidadId String
+  unidad   Unidad @relation(fields: [unidadId], references: [id])
+
   codigo        String
   nombre        String
   descripcion   String?
   horaInicio    String?
   horaFin       String?
   duracionHoras Float?
+
+  // ⭐ NUEVOS: Campos para ponderación PRO DRH 22
+  devolucionHoras Float? // Para DC: DA=9, DV=8, DC=12, DN=4, DS=8.5
+  horasDiurnas    Float? // Ej: N=0.5, S=1.5, D=12
+  horasNocturnas  Float? // Ej: N=3, S=7, D=0
+  horasSabDomFest Float? // Override para festivos (opcional)
+
   esOperativo   Boolean           @default(true)
   esNocturno    Boolean           @default(false)
   esDiaInhabil  Boolean           @default(false)
@@ -208,8 +265,9 @@ model TipoTurno {
   updatedAt     DateTime          @updatedAt
   asignaciones  AsignacionTurno[]
 
-  @@unique([unidadId, codigo])
+  @@unique([matrizVersionId, codigo]) // Código único por versión
   @@index([unidadId, activo])
+  @@index([matrizVersionId]) // ⭐ NUEVO: Índice para queries por versión
 }
 
 // ============================================
@@ -254,9 +312,14 @@ enum TipoHabilitacion {
 // ============================================
 
 model PublicacionTurnos {
-  id               String            @id @default(cuid())
-  unidadId         String
-  unidad           Unidad            @relation(fields: [unidadId], references: [id])
+  id       String @id @default(cuid())
+  unidadId String
+  unidad   Unidad @relation(fields: [unidadId], references: [id])
+
+  // ⭐ NUEVO: Referencia a versión de matriz usada
+  matrizVersionId String?
+  matrizVersion   MatrizTurnosVersion? @relation(fields: [matrizVersionId], references: [id])
+
   mes              Int
   año             Int
   estado           EstadoPublicacion
@@ -272,6 +335,9 @@ model PublicacionTurnos {
 
   // Módulo de métricas - relación inversa
   planillasControl PlanillaControlTurno[]
+
+  // ⭐ NUEVO: Relación con ausencias
+  ausencias Ausencia[]
 
   @@unique([unidadId, mes, año])
   @@index([estado])
@@ -306,6 +372,56 @@ model AsignacionTurno {
   @@unique([publicacionId, usuarioId, fecha])
   @@index([fecha])
   @@index([usuarioId, fecha])
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODELO: Ausencia
+// Registro de ausencias que afectan cálculo de métricas
+// ═══════════════════════════════════════════════════════════
+model Ausencia {
+  id String @id @default(cuid())
+
+  // Relaciones
+  publicacionId String
+  publicacion   PublicacionTurnos @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  // Tipo de ausencia
+  tipo TipoAusencia
+
+  // Opción A: Por días (LM, FLA)
+  fechaInicio DateTime? @db.Date
+  fechaFin    DateTime? @db.Date
+  diasHabiles Int? // Días hábiles afectados
+
+  // Opción B: Por horas (PA, PG, OTRO)
+  fecha DateTime? @db.Date
+  horas Float?
+
+  // Auditoría
+  observaciones String?
+  creadoPor     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([publicacionId, usuarioId])
+  @@index([tipo])
+  @@map("ausencias")
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENUM: TipoAusencia
+// Tipos oficiales según PRO DRH 22
+// ═══════════════════════════════════════════════════════════
+enum TipoAusencia {
+  LM // Licencia Médica (días) → rebaja HLM
+  FLA // Feriado Legal Anual (días) → rebaja HLM
+  PA // Permiso Administrativo (horas) → rebaja HMC
+  PG // Permiso Gremial (horas) → rebaja HMC
+  OTRO // Otros permisos (horas) → rebaja HMC
 }
 
 // ============================================

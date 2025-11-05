@@ -21,11 +21,11 @@ export class CalculadorMetricasPRODRH22 {
    * Basado en PRO DRH 22 Capítulo 3.1
    * 
    * @param diasHabiles - Número de días hábiles del mes (Lun-Vie)
-   * @returns HLM en horas (diasHabiles × 8.8)
+   * @returns HLM en horas TRUNCADO (sin decimales según PRO DRH 22)
    * 
    * @example
-   * calcularHLM(22) // Noviembre 2024: 193.6 horas
-   * calcularHLM(23) // Octubre 2025: 202.4 horas
+   * calcularHLM(22) // Noviembre 2024: 193.6 → 193h (truncado)
+   * calcularHLM(23) // Octubre 2025: 202.4 → 202h (truncado)
    */
   calcularHLM(diasHabiles: number): number {
     if (diasHabiles < 0 || diasHabiles > 31) {
@@ -35,8 +35,8 @@ export class CalculadorMetricasPRODRH22 {
     // HLM = días hábiles × 8.8 horas diarias estándar
     const hlm = diasHabiles * CONSTANTES_PRODRH22.HORAS_DIARIAS_ESTANDAR;
     
-    // Redondear a 1 decimal
-    return Math.round(hlm * 10) / 10;
+    // TRUNCAR según PRO DRH 22 (sin decimales)
+    return Math.floor(hlm);
   }
 
   /**
@@ -185,10 +185,10 @@ export class CalculadorMetricasPRODRH22 {
     const proporcionFestivas = totalHoras > 0 ? horasFestivas / totalHoras : 0;
     
     return {
-      HE_diurnas: Math.round(HE_total * proporcionDiurnas * 10) / 10,
-      HE_nocturnas: Math.round(HE_total * proporcionNocturnas * 10) / 10,
-      HE_festivas: Math.round(HE_total * proporcionFestivas * 10) / 10,
-      HE_total: Math.round(HE_total * 10) / 10
+      HE_diurnas: Math.floor(HE_total * proporcionDiurnas),
+      HE_nocturnas: Math.floor(HE_total * proporcionNocturnas),
+      HE_festivas: Math.floor(HE_total * proporcionFestivas),
+      HE_total: Math.floor(HE_total)
     };
   }
 
@@ -225,8 +225,8 @@ export class CalculadorMetricasPRODRH22 {
     // Suma total de compensaciones
     const compensacionTotal = compensacionDiurna + compensacionNocturna + compensacionFestiva;
     
-    // Redondear a 2 decimales
-    return Math.round(compensacionTotal * 100) / 100;
+    // TRUNCAR según PRO DRH 22 (sin decimales)
+    return Math.floor(compensacionTotal);
   }
 
   /**
@@ -248,8 +248,8 @@ export class CalculadorMetricasPRODRH22 {
     
     const horasPago = (HE_total * porcentajePago) / 100;
     
-    // Redondear a 2 decimales
-    return Math.round(horasPago * 100) / 100;
+    // TRUNCAR según PRO DRH 22 (sin decimales)
+    return Math.floor(horasPago);
   }
 
   /**
@@ -277,8 +277,8 @@ export class CalculadorMetricasPRODRH22 {
     const horasNuevas = (HE_total * porcentajeAcumulacion) / 100;
     const horasAcumuladas = horasNuevas + saldoAnterior;
     
-    // Redondear a 2 decimales
-    return Math.round(horasAcumuladas * 100) / 100;
+    // TRUNCAR según PRO DRH 22 (sin decimales)
+    return Math.floor(horasAcumuladas);
   }
 
   /**
@@ -310,8 +310,8 @@ export class CalculadorMetricasPRODRH22 {
       horasDescansoComp + 
       horasPermisoLactancia;
     
-    // Redondear a 2 decimales
-    return Math.round(totalDeducciones * 100) / 100;
+    // TRUNCAR según PRO DRH 22 (sin decimales)
+    return Math.floor(totalDeducciones);
   }
 
   /**

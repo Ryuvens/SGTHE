@@ -1259,10 +1259,38 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        HLM
+                        <div className="flex items-center justify-center gap-1">
+                          HLM
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Horario Legal Mensual</p>
+                                <p className="text-xs">Horas obligatorias según días hábiles del mes</p>
+                                <p className="text-xs font-mono">HLM = días_hábiles × 8.8 - TRUNCAR</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
-                        HMR
+                        <div className="flex items-center justify-center gap-1">
+                          HMR
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs font-semibold">Horario Mensual Realizado</p>
+                                <p className="text-xs">Horas trabajadas efectivamente durante el mes (suma bruta no ponderada)</p>
+                                <p className="text-xs font-mono">HMR = Σ(Diurnas + Nocturnas/Sáb/Dom/Fest) - TRUNCAR</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </th>
                       <th className="sticky top-0 bg-white dark:bg-slate-950 z-20 p-2 text-center text-xs font-medium">
                         <div className="flex items-center justify-center gap-1">
@@ -1505,13 +1533,10 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
                         {usuarios.reduce((sum, u) => sum + (calcularMetricasUsuario(u.id)?.SA || 0), 0).toFixed(2)}
                       </td>
                       <td className="p-2 text-center font-semibold">
-                        {calcularMetricasUsuario(usuarios[0]?.id)?.HLM?.toFixed(1) || '0.0'}
+                        {calcularMetricasUsuario(usuarios[0]?.id)?.HLM || '0'}
                       </td>
-                      <td className="p-2 text-center font-bold">
-                        {usuarios.reduce((sum, u) => {
-                          const m = calcularMetricasUsuario(u.id)
-                          return sum + (m?.HMR || Math.floor(m?.horasTrabajadas || 0) || 0)
-                        }, 0)}
+                      <td className="p-2 text-center font-bold text-muted-foreground">
+                        --
                       </td>
                       <td className="p-2 text-center font-semibold">
                         -{usuarios.reduce((sum, u) => {

@@ -251,6 +251,12 @@ export async function calcularMetricasUnidad(
       ? ajusteManual 
       : (saldosMap.get(funcionario.id) || 0);
 
+    // Calcular descansos complementarios (DC) del funcionario
+    const codigosDescanso = ['DA', 'DV', 'DC', 'DN', 'DS'];
+    const horasDescansoComp = asignacionesFuncionario
+      .filter(a => codigosDescanso.includes(a.tipoTurno?.codigo || ''))
+      .reduce((sum, a) => sum + (a.tipoTurno?.duracionHoras || 0), 0);
+
     // NUEVO: Calcular métricas completas usando servicio PRO DRH 22
     const metricasCompletas = calculadorPRODRH22.calcularMetricasCompletas({
       funcionarioId: funcionario.id,
@@ -260,6 +266,7 @@ export async function calcularMetricasUnidad(
       HE_diurnas,
       HE_nocturnas,
       HE_festivas,
+      horasDescansoComp,  // ← NUEVO: Pasar DC calculados
       saldoAnterior: SA,
       porcentajePago,
       porcentajeAcumulacion
