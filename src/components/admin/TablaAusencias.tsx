@@ -47,7 +47,26 @@ export function TablaAusencias({ ausencias }: TablaAusenciasProps) {
   const [eliminando, setEliminando] = useState<string | null>(null);
 
   const handleEliminar = async (ausenciaId: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta ausencia?')) {
+    // Buscar la ausencia para mostrar información en el confirm
+    const ausencia = ausencias.find((a) => a.id === ausenciaId);
+    if (!ausencia) return;
+
+    const tipoInfo = TIPOS_AUSENCIA_INFO[ausencia.tipo as keyof typeof TIPOS_AUSENCIA_INFO];
+    const ausenciaInfo = `${ausencia.tipo} - ${tipoInfo?.nombre || ausencia.tipo}`;
+    const funcionarioInfo = `${ausencia.usuario.nombre} ${ausencia.usuario.apellido}`;
+    const detalles = ausencia.diasHabiles 
+      ? `(${ausencia.diasHabiles} días hábiles)` 
+      : ausencia.horas 
+      ? `(${ausencia.horas}h)` 
+      : '';
+
+    if (!confirm(
+      `¿Confirmar eliminación de ausencia?\n\n` +
+      `Tipo: ${ausenciaInfo}\n` +
+      `Funcionario: ${funcionarioInfo}\n` +
+      `Cantidad: ${detalles}\n\n` +
+      `⚠️ Esta acción recalculará automáticamente las métricas del funcionario.`
+    )) {
       return;
     }
 
