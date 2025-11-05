@@ -4,6 +4,76 @@ import { prisma } from '@/lib/prisma';
 import { recalcularMetricasTrasAusencia } from '@/lib/services/metricasCompletas.service';
 
 // ═══════════════════════════════════════════════════════════
+// GET: Obtener ausencias con filtros
+// ═══════════════════════════════════════════════════════════
+
+export async function GET(request: Request) {
+  try {
+    // 1. Verificar autenticación
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
+    }
+
+    // 2. Obtener parámetros de query
+    const { searchParams } = new URL(request.url);
+    const publicacionId = searchParams.get('publicacionId');
+    const desde = searchParams.get('desde');
+    const hasta = searchParams.get('hasta');
+
+    // 3. Construir filtros
+    const where: any = {};
+
+    if (publicacionId) {
+      where.publicacionId = publicacionId;
+    }
+
+    if (desde && hasta) {
+      where.OR = [
+        {
+          fechaInicio: {
+            gte: new Date(desde),
+            lte: new Date(hasta),
+          },
+        },
+        {
+          fecha: {
+            gte: new Date(desde),
+            lte: new Date(hasta),
+          },
+        },
+      ];
+    }
+
+    // 4. Obtener ausencias
+    const ausencias = await prisma.ausencia.findMany({
+      where,
+      include: {
+        usuario: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            rut: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return NextResponse.json(ausencias);
+  } catch (error) {
+    console.error('Error al obtener ausencias:', error);
+    return NextResponse.json(
+      { message: 'Error interno del servidor' },
+      { status: 500 }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // FUNCIÓN AUXILIAR: Calcular días hábiles
 // ═══════════════════════════════════════════════════════════
 
