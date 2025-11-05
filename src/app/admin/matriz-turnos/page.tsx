@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { History, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { TablaTiposTurnoEditable } from '@/components/admin/TablaTiposTurnoEditable';
 
 // ═══════════════════════════════════════════════════════════
 // COMPONENTE PRINCIPAL
@@ -158,7 +159,7 @@ export default async function MatrizTurnosPage() {
         </CardHeader>
         <CardContent>
           <Suspense fallback={<TablaTiposTurnoSkeleton />}>
-            <TablaTiposTurno tiposTurno={versionActiva.tiposTurno} />
+            <TablaTiposTurnoEditable tiposTurno={versionActiva.tiposTurno} />
           </Suspense>
         </CardContent>
       </Card>
@@ -166,122 +167,6 @@ export default async function MatrizTurnosPage() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════
-// COMPONENTE: TABLA DE TIPOS DE TURNO
-// ═══════════════════════════════════════════════════════════
-
-interface TipoTurno {
-  id: string;
-  codigo: string;
-  nombre: string;
-  duracionHoras: number | null;
-  devolucionHoras: number | null;
-  horasDiurnas: number | null;
-  horasNocturnas: number | null;
-  horasSabDomFest: number | null;
-  color: string;
-  esOperativo: boolean;
-  esNocturno: boolean;
-  esDiaInhabil: boolean;
-}
-
-interface TablaTiposTurnoProps {
-  tiposTurno: TipoTurno[];
-}
-
-function TablaTiposTurno({ tiposTurno }: TablaTiposTurnoProps) {
-  if (tiposTurno.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <p className="text-lg font-medium">No hay tipos de turno configurados</p>
-        <p className="text-sm text-muted-foreground">
-          Esta versión no tiene tipos de turno asociados.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[80px]">Color</TableHead>
-            <TableHead className="w-[100px]">Código</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead className="text-center">Duración</TableHead>
-            <TableHead className="text-center">Devolución</TableHead>
-            <TableHead className="text-center">Diurnas</TableHead>
-            <TableHead className="text-center">Nocturnas</TableHead>
-            <TableHead className="text-center">Sáb/Dom/Fest</TableHead>
-            <TableHead className="text-center">Tipo</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tiposTurno.map((tipo) => (
-            <TableRow key={tipo.id}>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-6 w-6 rounded-full border-2 border-border"
-                    style={{ backgroundColor: tipo.color }}
-                  />
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline" className="font-mono">
-                  {tipo.codigo}
-                </Badge>
-              </TableCell>
-              <TableCell className="font-medium">{tipo.nombre}</TableCell>
-              <TableCell className="text-center">
-                {tipo.duracionHoras ? `${tipo.duracionHoras}h` : '-'}
-              </TableCell>
-              <TableCell className="text-center">
-                {tipo.devolucionHoras ? (
-                  <Badge variant="secondary" className="font-mono">
-                    {tipo.devolucionHoras}h
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell className="text-center">
-                {tipo.horasDiurnas ? `${tipo.horasDiurnas}h` : '-'}
-              </TableCell>
-              <TableCell className="text-center">
-                {tipo.horasNocturnas ? `${tipo.horasNocturnas}h` : '-'}
-              </TableCell>
-              <TableCell className="text-center">
-                {tipo.horasSabDomFest ? `${tipo.horasSabDomFest}h` : '-'}
-              </TableCell>
-              <TableCell className="text-center">
-                <div className="flex gap-1 justify-center">
-                  {tipo.esOperativo && (
-                    <Badge variant="default" className="text-xs">
-                      OP
-                    </Badge>
-                  )}
-                  {tipo.esNocturno && (
-                    <Badge variant="secondary" className="text-xs">
-                      N
-                    </Badge>
-                  )}
-                  {tipo.esDiaInhabil && (
-                    <Badge variant="outline" className="text-xs">
-                      Inh
-                    </Badge>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════
 // COMPONENTE: SKELETON DE CARGA
