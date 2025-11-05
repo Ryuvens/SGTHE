@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { recalcularMetricasTrasAusencia } from '@/lib/services/metricasCompletas.service';
 
 // ═══════════════════════════════════════════════════════════
 // FUNCIÓN AUXILIAR: Calcular días hábiles
@@ -128,6 +129,14 @@ export async function POST(request: Request) {
         },
       },
     });
+
+    // 9. Recalcular métricas tras registrar ausencia
+    try {
+      await recalcularMetricasTrasAusencia(ausencia.id);
+    } catch (error) {
+      console.error('Error al recalcular métricas:', error);
+      // No fallar el registro, solo log
+    }
 
     return NextResponse.json({
       message: 'Ausencia registrada correctamente',

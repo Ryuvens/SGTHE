@@ -64,6 +64,7 @@ model Usuario {
   // ⭐ NUEVO: Relación con versiones creadas y ausencias
   matrizVersionesCreadas MatrizTurnosVersion[] @relation("MatrizVersionesCreadas")
   ausencias              Ausencia[]
+  metricasMensuales      MetricasMensuales[]
 
   @@index([unidadId])
   @@index([email])
@@ -335,9 +336,10 @@ model PublicacionTurnos {
 
   // Módulo de métricas - relación inversa
   planillasControl PlanillaControlTurno[]
-
-  // ⭐ NUEVO: Relación con ausencias
-  ausencias Ausencia[]
+  
+  // ⭐ NUEVO: Relación con ausencias y métricas
+  ausencias         Ausencia[]
+  metricasMensuales MetricasMensuales[]
 
   @@unique([unidadId, mes, año])
   @@index([estado])
@@ -973,4 +975,45 @@ model ConfiguracionMetricas {
   user Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("configuraciones_metricas")
+}
+
+// 7. Métricas Mensuales Calculadas (con Ausencias)
+model MetricasMensuales {
+  id            String   @id @default(cuid())
+  publicacionId String
+  usuarioId     String
+  mes           Int
+  anio          Int
+  
+  // Métricas base
+  hmr           Float    @default(0) // Horario Mensual Realizado
+  hlm           Float    @default(0) // Horario Legal Mensual (ajustado)
+  hmc           Float    @default(0) // Horario Mensual Corregido
+  
+  // Métricas calculadas
+  ponderacion   Float    @default(0) // Ponderación nocturnas/inhábiles
+  totalHoras    Float    @default(0) // Total horas ponderadas
+  hdf           Float    @default(0) // Horas Diurnas Faltantes
+  he            Float    @default(0) // Horas Extras Ponderadas
+  
+  // Desgloses
+  horasDiurnas       Float @default(0)
+  horasNocturnas     Float @default(0)
+  horasSabDomFest    Float @default(0)
+  horasDescansoComp  Float @default(0) // DC
+  
+  // Ausencias
+  diasAusenciaLM_FLA Int   @default(0)
+  horasPermisos      Float @default(0) // PA, PG, OTRO
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  publicacion PublicacionTurnos @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  usuario     Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  @@unique([publicacionId, usuarioId, mes, anio])
+  @@index([publicacionId])
+  @@index([usuarioId])
+  @@map("metricas_mensuales")
 }

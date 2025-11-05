@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { recalcularYGuardarMetricas } from '@/lib/services/metricasCompletas.service';
 
 // ═══════════════════════════════════════════════════════════
 // DELETE: Eliminar ausencia
@@ -35,9 +36,18 @@ export async function DELETE(
       );
     }
 
-    // 4. Verificar que la ausencia existe
+    // 4. Verificar que la ausencia existe y obtener datos para recálculo
     const ausencia = await prisma.ausencia.findUnique({
       where: { id: params.id },
+      include: {
+        publicacion: {
+          select: {
+            id: true,
+            mes: true,
+            año: true,
+          },
+        },
+      },
     });
 
     if (!ausencia) {
@@ -47,10 +57,27 @@ export async function DELETE(
       );
     }
 
-    // 5. Eliminar ausencia
+    // 5. Guardar datos para recálculo
+    const { publicacionId, usuarioId } = ausencia;
+    const { mes, año: anio } = ausencia.publicacion;
+
+    // 6. Eliminar ausencia
     await prisma.ausencia.delete({
       where: { id: params.id },
     });
+
+    // 7. Recalcular métricas tras eliminar ausencia
+    try {
+      await recalcularYGuardarMetricas({
+        publicacionId,
+        usuarioId,
+        mes,
+        anio,
+      });
+    } catch (error) {
+      console.error('Error al recalcular métricas:', error);
+      // No fallar la eliminación, solo log
+    }
 
     return NextResponse.json({
       message: 'Ausencia eliminada correctamente',
