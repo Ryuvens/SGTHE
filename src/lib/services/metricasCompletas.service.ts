@@ -13,7 +13,7 @@ interface CalcularMetricasParams {
 
 export interface MetricasCalculadas {
   hmr: number;           // Horario Mensual Realizado
-  hlm: number;           // Horario Legal Mensual (ajustado por ausencias)
+  hlm: number;           // Horario Legal Mensual
   hmc: number;           // Horario Mensual Corregido
   ponderacion: number;   // Ponderación de horas nocturnas/inhábiles
   totalHoras: number;    // Total horas ponderadas
@@ -25,8 +25,6 @@ export interface MetricasCalculadas {
   horasNocturnas: number;
   horasSabDomFest: number;
   horasDescansoComp: number;
-  diasAusenciaLM_FLA: number;
-  horasPermisos: number;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -84,36 +82,6 @@ export async function calcularMetricasMensuales(
   });
 
   // ═══════════════════════════════════════════════════════════
-  // PASO 2: Obtener ausencias del funcionario en el mes
-  // ═══════════════════════════════════════════════════════════
-
-  const primerDia = new Date(anio, mes - 1, 1);
-  const ultimoDia = new Date(anio, mes, 0);
-
-  const ausencias = await prisma.ausencia.findMany({
-    where: {
-      usuarioId,
-      publicacionId,
-      OR: [
-        // Ausencias por días (LM, FLA)
-        {
-          fechaInicio: {
-            gte: primerDia,
-            lte: ultimoDia,
-          },
-        },
-        // Ausencias por fecha única (PA, PG, OTRO)
-        {
-          fecha: {
-            gte: primerDia,
-            lte: ultimoDia,
-          },
-        },
-      ],
-    },
-  });
-
-  // ═══════════════════════════════════════════════════════════
   // CÁLCULO 1: HMR (Horario Mensual Realizado)
   // Fórmula: HMR = Σ(Horas Diurnas + Horas Nocturnas + Horas Sáb/Dom/Fest)
   // Nota: Suma BRUTA y NO ponderada
@@ -135,19 +103,12 @@ export async function calcularMetricasMensuales(
   const hmr = Math.floor(sumaHorasDiurnas + sumaHorasNocturnas + sumaHorasSabDomFest);
 
   // ═══════════════════════════════════════════════════════════
-  // CÁLCULO 2: HLM ajustado por ausencias (LM y FLA)
-  // Fórmula: HLM = (Días hábiles - Días LM/FLA) × 8.8 - TRUNCAR
+  // CÁLCULO 2: HLM (Horario Legal Mensual)
+  // Fórmula: HLM = Días hábiles × 8.8 - TRUNCAR
   // ═══════════════════════════════════════════════════════════
 
   const diasHabilesMes = calcularDiasHabilesMes(mes, anio);
-  
-  // Descontar días de LM y FLA
-  const diasAusenciaLM_FLA = ausencias
-    .filter((a) => ['LM', 'FLA'].includes(a.tipo))
-    .reduce((sum, a) => sum + (a.diasHabiles || 0), 0);
-
-  const diasHabilesEfectivos = Math.max(0, diasHabilesMes - diasAusenciaLM_FLA);
-  const hlm = Math.floor(diasHabilesEfectivos * 8.8);
+  const hlm = Math.floor(diasHabilesMes * 8.8);
 
   // ═══════════════════════════════════════════════════════════
   // CÁLCULO 3: DC (Descansos Complementarios)
@@ -160,23 +121,14 @@ export async function calcularMetricasMensuales(
   );
 
   // ═══════════════════════════════════════════════════════════
-  // CÁLCULO 4: Horas de permisos (PA, PG, OTRO)
-  // Fórmula: Σ(horas de PA + PG + OTRO)
+  // CÁLCULO 4: HMC (Horario Mensual Corregido)
+  // Fórmula: HMC = HLM - DC - TRUNCAR
   // ═══════════════════════════════════════════════════════════
 
-  const horasPermisos = ausencias
-    .filter((a) => ['PA', 'PG', 'OTRO'].includes(a.tipo))
-    .reduce((sum, a) => sum + (a.horas || 0), 0);
+  const hmc = Math.floor(hlm - horasDescansoComp);
 
   // ═══════════════════════════════════════════════════════════
-  // CÁLCULO 5: HMC (Horario Mensual Corregido)
-  // Fórmula: HMC = HLM - DC - PA - PG - OTRO - TRUNCAR
-  // ═══════════════════════════════════════════════════════════
-
-  const hmc = Math.floor(hlm - horasDescansoComp - horasPermisos);
-
-  // ═══════════════════════════════════════════════════════════
-  // CÁLCULO 6: PONDERACIÓN
+  // CÁLCULO 5: PONDERACIÓN
   // Fórmula:
   //   SI HMC < HMR → PONDERACIÓN = (Σ Nocturnas + Inhábiles) × 0.5
   //   SI HMC ≥ HMR → PONDERACIÓN = (Σ Nocturnas + Inhábiles) × 1.5
@@ -197,7 +149,7 @@ export async function calcularMetricasMensuales(
   }
 
   // ═══════════════════════════════════════════════════════════
-  // CÁLCULO 7: TOTAL HORAS (Ponderadas)
+  // CÁLCULO 6: TOTAL HORAS (Ponderadas)
   // Fórmula:
   //   SI HMC ≥ HMR → TOTAL_HORAS = HMR + PONDERACIÓN
   //   SI HMC < HMR → TOTAL_HORAS = 0
@@ -213,7 +165,7 @@ export async function calcularMetricasMensuales(
   }
 
   // ═══════════════════════════════════════════════════════════
-  // CÁLCULO 8: HDF (Horas Diurnas Faltantes)
+  // CÁLCULO 7: HDF (Horas Diurnas Faltantes)
   // Fórmula:
   //   SI HMC < HMR → HDF = HMC - (Σ Horas Diurnas trabajadas)
   //   SI HMC ≥ HMR → HDF = 0
@@ -228,7 +180,7 @@ export async function calcularMetricasMensuales(
   }
 
   // ═══════════════════════════════════════════════════════════
-  // CÁLCULO 9: HE (Horas Extras Ponderadas)
+  // CÁLCULO 8: HE (Horas Extras Ponderadas)
   // Fórmula:
   //   SI HMC < HMR → HE = PONDERACIÓN - HDF
   //   SI HMC ≥ HMR → HE = TOTAL_HORAS - HMC
@@ -260,8 +212,6 @@ export async function calcularMetricasMensuales(
     horasNocturnas: Math.floor(sumaHorasNocturnas),
     horasSabDomFest: Math.floor(sumaHorasSabDomFest),
     horasDescansoComp: Math.floor(horasDescansoComp),
-    diasAusenciaLM_FLA,
-    horasPermisos: Math.floor(horasPermisos),
   };
 }
 
@@ -301,40 +251,6 @@ export async function recalcularYGuardarMetricas(
   });
 
   return metricas;
-}
-
-// ═══════════════════════════════════════════════════════════
-// FUNCIÓN: Recalcular métricas tras cambio en ausencias
-// ═══════════════════════════════════════════════════════════
-
-export async function recalcularMetricasTrasAusencia(
-  ausenciaId: string
-): Promise<void> {
-  // 1. Obtener la ausencia con relaciones
-  const ausencia = await prisma.ausencia.findUnique({
-    where: { id: ausenciaId },
-    include: {
-      publicacion: {
-        select: {
-          id: true,
-          mes: true,
-          año: true,
-        },
-      },
-    },
-  });
-
-  if (!ausencia) {
-    throw new Error('Ausencia no encontrada');
-  }
-
-  // 2. Recalcular métricas del funcionario
-  await recalcularYGuardarMetricas({
-    publicacionId: ausencia.publicacionId,
-    usuarioId: ausencia.usuarioId,
-    mes: ausencia.publicacion.mes,
-    anio: ausencia.publicacion.año,
-  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -423,8 +339,6 @@ export async function obtenerMetricasFuncionario(
     horasNocturnas: metricas.horasNocturnas,
     horasSabDomFest: metricas.horasSabDomFest,
     horasDescansoComp: metricas.horasDescansoComp,
-    diasAusenciaLM_FLA: metricas.diasAusenciaLM_FLA,
-    horasPermisos: metricas.horasPermisos,
   };
 }
 

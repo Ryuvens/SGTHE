@@ -45,7 +45,6 @@ import {
 import { cn } from '@/lib/utils'
 import { calculadorPRODRH22 } from '@/services/prodrh22/calculoMetricas'
 import type { MetricasPRODRH22 } from '@/types/prodrh22/metricas.types'
-import { WidgetAusenciasMes } from '@/components/admin/WidgetAusenciasMes'
 
 interface Asignacion {
   id?: string
@@ -97,10 +96,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   // Estado para Saldos Anteriores (SA) de los funcionarios
   const [saldosAnteriores, setSaldosAnteriores] = useState<Map<string, number>>(new Map())
   const [loadingSaldos, setLoadingSaldos] = useState(false)
-
-  // Estado para Ausencias del mes
-  const [ausenciasMes, setAusenciasMes] = useState<any[]>([])
-  const [loadingAusencias, setLoadingAusencias] = useState(false)
 
   // Festivos de Chile 2024-2025 (para identificación visual según PRO DRH 22)
   const festivosChile = useMemo(() => [
@@ -180,14 +175,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (publicacion) {
       cargarSaldosAnteriores()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publicacion?.id])
-
-  // Cargar ausencias del mes cuando la publicación esté disponible
-  useEffect(() => {
-    if (publicacion) {
-      cargarAusenciasMes()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicacion?.id])
@@ -385,39 +372,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
     }
   }
 
-  /**
-   * Carga las Ausencias del mes para mostrar en el widget
-   */
-  async function cargarAusenciasMes() {
-    if (!publicacion?.id || !publicacion?.mes || !publicacion?.año) {
-      console.log('⏭️ Saltando carga de ausencias (publicación no disponible)')
-      return
-    }
-
-    setLoadingAusencias(true)
-    try {
-      // Construir fechas del mes
-      const primerDia = new Date(publicacion.año, publicacion.mes - 1, 1).toISOString().split('T')[0]
-      const ultimoDia = new Date(publicacion.año, publicacion.mes, 0).toISOString().split('T')[0]
-
-      const response = await fetch(
-        `/api/admin/ausencias?publicacionId=${publicacion.id}&desde=${primerDia}&hasta=${ultimoDia}`
-      )
-
-      if (!response.ok) {
-        throw new Error('Error al cargar ausencias')
-      }
-
-      const data = await response.json()
-      setAusenciasMes(data || [])
-      console.log('✅ Ausencias del mes cargadas:', data?.length || 0, 'ausencias')
-    } catch (error) {
-      console.error('❌ Error al cargar ausencias:', error)
-      // No mostrar toast, solo log (es información auxiliar)
-    } finally {
-      setLoadingAusencias(false)
-    }
-  }
 
   // Manejar drag start
   function handleDragStart(event: DragStartEvent) {
@@ -1652,15 +1606,6 @@ export default function EditarRolPage({ params }: { params: { id: string } }) {
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Widget de Ausencias del Mes */}
-        {publicacion && ausenciasMes.length > 0 && (
-          <WidgetAusenciasMes
-            ausencias={ausenciasMes}
-            mes={publicacion.mes}
-            anio={publicacion.año}
-          />
         )}
 
         <div className={`grid gap-6 ${sidebarColapsado ? 'grid-cols-1' : 'grid-cols-12'}`}>

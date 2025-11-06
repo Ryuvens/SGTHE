@@ -61,9 +61,8 @@ model Usuario {
   historialCompensaciones HistorialCompensacion[]
   configuracionMetricas   ConfiguracionMetricas?
 
-  // ⭐ NUEVO: Relación con versiones creadas y ausencias
+  // ⭐ NUEVO: Relación con versiones creadas
   matrizVersionesCreadas MatrizTurnosVersion[] @relation("MatrizVersionesCreadas")
-  ausencias              Ausencia[]
   metricasMensuales      MetricasMensuales[]
 
   @@index([unidadId])
@@ -337,8 +336,7 @@ model PublicacionTurnos {
   // Módulo de métricas - relación inversa
   planillasControl PlanillaControlTurno[]
   
-  // ⭐ NUEVO: Relación con ausencias y métricas
-  ausencias         Ausencia[]
+  // ⭐ NUEVO: Relación con métricas
   metricasMensuales MetricasMensuales[]
 
   @@unique([unidadId, mes, año])
@@ -374,56 +372,6 @@ model AsignacionTurno {
   @@unique([publicacionId, usuarioId, fecha])
   @@index([fecha])
   @@index([usuarioId, fecha])
-}
-
-// ═══════════════════════════════════════════════════════════
-// MODELO: Ausencia
-// Registro de ausencias que afectan cálculo de métricas
-// ═══════════════════════════════════════════════════════════
-model Ausencia {
-  id String @id @default(cuid())
-
-  // Relaciones
-  publicacionId String
-  publicacion   PublicacionTurnos @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
-
-  usuarioId String
-  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-
-  // Tipo de ausencia
-  tipo TipoAusencia
-
-  // Opción A: Por días (LM, FLA)
-  fechaInicio DateTime? @db.Date
-  fechaFin    DateTime? @db.Date
-  diasHabiles Int? // Días hábiles afectados
-
-  // Opción B: Por horas (PA, PG, OTRO)
-  fecha DateTime? @db.Date
-  horas Float?
-
-  // Auditoría
-  observaciones String?
-  creadoPor     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([publicacionId, usuarioId])
-  @@index([tipo])
-  @@map("ausencias")
-}
-
-// ═══════════════════════════════════════════════════════════
-// ENUM: TipoAusencia
-// Tipos oficiales según PRO DRH 22
-// ═══════════════════════════════════════════════════════════
-enum TipoAusencia {
-  LM // Licencia Médica (días) → rebaja HLM
-  FLA // Feriado Legal Anual (días) → rebaja HLM
-  PA // Permiso Administrativo (horas) → rebaja HMC
-  PG // Permiso Gremial (horas) → rebaja HMC
-  OTRO // Otros permisos (horas) → rebaja HMC
 }
 
 // ============================================
@@ -977,7 +925,7 @@ model ConfiguracionMetricas {
   @@map("configuraciones_metricas")
 }
 
-// 7. Métricas Mensuales Calculadas (con Ausencias)
+// 7. Métricas Mensuales Calculadas
 model MetricasMensuales {
   id            String   @id @default(cuid())
   publicacionId String
@@ -987,7 +935,7 @@ model MetricasMensuales {
   
   // Métricas base
   hmr           Float    @default(0) // Horario Mensual Realizado
-  hlm           Float    @default(0) // Horario Legal Mensual (ajustado)
+  hlm           Float    @default(0) // Horario Legal Mensual
   hmc           Float    @default(0) // Horario Mensual Corregido
   
   // Métricas calculadas
@@ -1001,10 +949,6 @@ model MetricasMensuales {
   horasNocturnas     Float @default(0)
   horasSabDomFest    Float @default(0)
   horasDescansoComp  Float @default(0) // DC
-  
-  // Ausencias
-  diasAusenciaLM_FLA Int   @default(0)
-  horasPermisos      Float @default(0) // PA, PG, OTRO
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
