@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -162,7 +162,7 @@ async function clonarTiposTurno(params: ClonarTiposTurnoParams): Promise<number>
         color: tipoOrigen.color,
         activo: tipoOrigen.activo,
         orden: tipoOrigen.orden,
-        validaciones: tipoOrigen.validaciones,
+        validaciones: tipoOrigen.validaciones ?? Prisma.JsonNull,
         creadoPor: tipoOrigen.creadoPor,
       },
     });
