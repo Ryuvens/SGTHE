@@ -41,7 +41,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const crearVersionSchema = z.object({
   tipo: z.enum(['minor', 'major'], {
-    required_error: 'Selecciona el tipo de versión',
+    errorMap: () => ({ message: 'Selecciona el tipo de versión' }),
   }),
   descripcion: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
 });
